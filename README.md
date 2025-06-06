@@ -89,49 +89,61 @@ chat_id = "your_telegram_chat_id"
 
 ## 실행 방법
 
-대시보드 실행:
+1. 대시보드 실행:
 ```bash
-streamlit run src/dashboard/🏠 Home.py
+streamlit run dashboard/🏠 Home.py
+```
+
+2. 개발 서버 실행 (자동 리로드):
+```bash
+streamlit run dashboard/🏠 Home.py --server.runOnSave=true
 ```
 
 ## 프로젝트 구조
 
 ```
 arbitrage-trading/
-├── src/
-│   ├── dashboard/
-│   │   ├── pages/
-│   │   │   ├── spread_chart.py
-│   │   │   ├── realtime_price_list.py
-│   │   │   ├── binance_bitget_comparison.py
-│   │   │   ├── bitget_bybit_comparison.py
-│   │   │   ├── historical_spread_analysis.py
-│   │   │   └── top_spread_trends.py
-│   │   ├── exchanges.py
-│   │   ├── charts.py
-│   │   ├── notifications.py
-│   │   └── main.py
-│   └── trading/
-│       └── arbitrage.py
-├── pyproject.toml
-└── README.md
+├── dashboard/                 # Streamlit 대시보드 애플리케이션
+│   ├── pages/                # 대시보드 페이지
+│   │   ├── 01_📈 스프레드 차트.py
+│   │   ├── 02_💰 실시간 가격 비교.py
+│   │   ├── 05_⏳ 과거 스프레드 분석.py
+│   │   ├── 06_📊 상위 스프레드 종목 추세.py
+│   │   └── __init__.py
+│   ├── exchanges.py          # 거래소 API 연동
+│   ├── charts.py            # 차트 생성 유틸리티
+│   ├── notifications.py     # 알림 시스템
+│   └── main.py             # 메인 애플리케이션
+├── trading/                 # 거래 로직
+│   └── arbitrage.py        # 차익거래 로직
+├── .streamlit/             # Streamlit 설정
+├── pyproject.toml          # 프로젝트 설정 및 의존성
+└── README.md              # 프로젝트 문서
 ```
 
 ## 기술 스택
 
 - Python 3.10+
-- Streamlit
-- Plotly
-- Pandas
-- Binance API
-- Bybit API
-- Bitget API
+- Streamlit 1.32.0+
+- Pandas 2.2.0+
+- Plotly 5.18.0+
+- CCXT 4.2.15+
+- Python-dotenv 1.0.0+
+- Python-telegram-bot 20.7+
+
+### 개발 도구
+- pytest 7.4.0+ (테스트)
+- black 23.7.0+ (코드 포맷팅)
+- isort 5.12.0+ (import 정렬)
+- mypy 1.5.1+ (타입 체크)
+- ruff 0.1.6+ (린터)
 
 ## 주의사항
 
 - API 키는 반드시 안전하게 보관하세요.
 - 실제 거래에 사용하기 전에 충분한 테스트를 진행하세요.
 - 거래소의 API 사용 제한을 확인하고 준수하세요.
+- 개발 시에는 black, isort, mypy, ruff를 사용하여 코드 품질을 유지하세요.
 
 ## 라이선스
 
