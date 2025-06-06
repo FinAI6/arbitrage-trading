@@ -62,7 +62,7 @@ def calculate_qty_for_fixed_usdt(exchange, symbol, price, target_usdt=100):
     precision = int(market.get('precision', {}).get('amount', 2))
     return round(qty, precision)
 
-def get_binance_futures_symbols():
+def get_binance_symbols():
     """Get list of available Binance futures symbols"""
     url = "https://fapi.binance.com/fapi/v1/exchangeInfo"
     data = requests.get(url).json()
@@ -108,7 +108,7 @@ def get_bybit_24h_volumes():
 
 def fetch_spread_data():
     """Fetch and process spread data between exchanges"""
-    binance_symbols = get_binance_futures_symbols()
+    binance_symbols = get_binance_symbols()
     binance_prices = get_binance_prices()
     bybit_prices, bybit_symbols = get_bybit_prices()
     bybit_volumes = get_bybit_24h_volumes()

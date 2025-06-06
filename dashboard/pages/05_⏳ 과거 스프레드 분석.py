@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from dashboard.exchanges import binance, bybit
+from dashboard.exchanges import BinanceExchange, BybitExchange
 import dashboard.global_data as gd
 
 st.set_page_config(
@@ -13,10 +13,13 @@ st.set_page_config(
 st.markdown("### ⏳ 과거 1분봉 스프레드 분석 (Binance vs ByBit)")
 volume_threshold = st.slider("📊 거래량 기준 (USDT)", 0, 10_000_000, 500_000, step=100_000)
 
-binance_symbols = binance.get_binance_futures_symbols()
-binance_prices = binance.get_binance_prices()
-binance_volumes = binance.get_binance_24h_volume()
-bybit_prices, bybit_symbols = bybit.get_bybit_prices()
+binance = BinanceExchange()
+bybit = BybitExchange()
+binance_symbols = binance.get_symbols()
+binance_prices = binance.get_prices()
+binance_volumes = binance.get_24h_volume()
+bybit_prices = bybit.get_prices()
+bybit_symbols = bybit.get_symbols()
 common_symbols = [
     s for s in binance_symbols & bybit_symbols
     if s in binance_prices and s in bybit_prices and binance_volumes.get(s, 0) >= volume_threshold
@@ -26,8 +29,8 @@ selected_symbol = st.selectbox("심볼 선택", sorted(common_symbols))
 duration_hours = st.slider("조회 시간 (시간 단위)", 1, 6, 3)
 
 minutes = duration_hours * 60
-binance_df = binance.get_binance_klines(selected_symbol, minutes)
-bybit_df = bybit.get_bybit_klines(selected_symbol, minutes)
+binance_df = binance.get_klines(selected_symbol, minutes)
+bybit_df = bybit.get_klines(selected_symbol, minutes)
 
 if not binance_df.empty and not bybit_df.empty:
     df = pd.merge(binance_df, bybit_df, on="index", how="inner")

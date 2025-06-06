@@ -1,8 +1,9 @@
+from typing import Dict, Set
 from datetime import datetime
-
 import requests
 import pandas as pd
 import streamlit as st
+from .base_exchange import BaseExchange
 
 
 @st.cache_data(ttl=30)  # 30초 동안 캐시 유효
@@ -30,7 +31,7 @@ def get_binance_24h_volume():
 
 
 @st.cache_data(ttl=30)
-def get_binance_futures_symbols():
+def get_binance_symbols():
     try:
         url = "https://fapi.binance.com/fapi/v1/exchangeInfo"
         r = requests.get(url, timeout=10)
@@ -78,3 +79,28 @@ def get_binance_klines(symbol, minutes):
     except Exception as e:
         st.error(f"❌ Binance 과거 데이터 오류: {e}")
         return pd.DataFrame()
+
+
+class BinanceExchange(BaseExchange):
+    """Binance exchange API implementation using cached functions"""
+
+    def get_exchange_name(self) -> str:
+        return "Binance"
+
+    def get_tickers(self):
+        return None
+
+    def get_funding_rates(self) -> Dict[str, float]:
+        return get_binance_funding_rates()
+
+    def get_24h_volume(self) -> Dict[str, float]:
+        return get_binance_24h_volume()
+
+    def get_symbols(self) -> Set[str]:
+        return get_binance_symbols()
+
+    def get_prices(self) -> Dict[str, float]:
+        return get_binance_prices()
+
+    def get_klines(self, symbol: str, minutes: int) -> pd.DataFrame:
+        return get_binance_klines(symbol, minutes)

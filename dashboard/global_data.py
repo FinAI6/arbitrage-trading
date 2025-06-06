@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import streamlit as st
 
-from dashboard.exchanges import binance, bitget, bybit
+from dashboard.exchanges import BinanceExchange, BybitExchange, BitgetExchange
 from dashboard.notifications import send_telegram_alert
 
 # 사용자 설정
@@ -14,15 +14,19 @@ top_spreads = []
 if "alert_log" not in st.session_state:
     st.session_state.alert_log = {}
 
+binance = BinanceExchange()
+bybit = BybitExchange()
+bitget = BitgetExchange()
+
 def update_spreads():
     global spread_list, top_spreads
-    binance_symbols = binance.get_binance_futures_symbols()
-    binance_prices = binance.get_binance_prices()
-    binance_volumes = binance.get_binance_24h_volume()
-    binance_funding = binance.get_binance_funding_rates()
-    bybit_prices, bybit_symbols = bybit.get_bybit_prices()
-    bybit_funding = bybit.get_bybit_funding_rates()
-    bitget_prices, bitget_symbols, bitget_symbol_map = bitget.get_bitget_prices()
+    binance_symbols = binance.get_symbols()
+    binance_prices = binance.get_prices()
+    binance_volumes = binance.get_24h_volume()
+    binance_funding = binance.get_funding_rates()
+    bybit_prices = bybit.get_prices()
+    bybit_symbols = bybit.get_symbols()
+    bybit_funding = bybit.get_funding_rates()
     common_symbols = [
         s for s in binance_symbols & bybit_symbols
         if s in binance_prices and s in bybit_prices and binance_volumes.get(s, 0) >= volume_threshold

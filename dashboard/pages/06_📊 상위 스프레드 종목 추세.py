@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from dashboard.exchanges import binance, bybit
+from dashboard.exchanges import BinanceExchange, BybitExchange
 import dashboard.global_data as gd
 
 st.set_page_config(
@@ -17,9 +17,11 @@ minutes = duration_hours * 60
 gd.update_spreads()
 top_symbols = [item["symbol"] for item in gd.top_spreads[:10]]
 
+binance = BinanceExchange()
+bybit = BybitExchange()
 for symbol in top_symbols:
-    binance_df = binance.get_binance_klines(symbol, minutes)
-    bybit_df = bybit.get_bybit_klines(symbol, minutes)
+    binance_df = binance.get_klines(symbol, minutes)
+    bybit_df = bybit.get_klines(symbol, minutes)
 
     if not binance_df.empty and not bybit_df.empty:
         df = pd.merge(binance_df, bybit_df, on="index", how="inner")
