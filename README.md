@@ -2,6 +2,12 @@
 
 이 프로젝트는 Binance, Bybit, Bitget 등 주요 암호화폐 거래소 간의 가격 차이(스프레드)를 실시간으로 모니터링하고 분석하는 대시보드입니다.
 
+## 거래소 API 문서
+
+- [Binance API 문서](https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/)
+- [Bybit API 문서](https://bybit-exchange.github.io/docs/)
+- [Bitget API 문서](https://www.bitget.com/api-doc/)
+
 ## 주요 기능
 
 ### 📈 스프레드 차트
