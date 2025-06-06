@@ -38,6 +38,7 @@ def find_common_symbols(ex1: BaseExchange, ex2: BaseExchange):
 
 def initialize_spread_dataframe(ex1: BaseExchange, ex2: BaseExchange) -> pd.DataFrame:
     common_symbols = find_common_symbols(exchange1, exchange2)
+    st.info(f"🔄 공통 비교 가능 종목 수: {len(common_symbols)}")
     data_dict = defaultdict(list)
     ex1_tickers = ex1.get_tickers()
     if ex1_tickers:
