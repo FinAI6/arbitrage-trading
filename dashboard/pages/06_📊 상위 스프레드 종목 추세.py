@@ -21,14 +21,11 @@ duration_hours = st.sidebar.slider("조회 시간 (시간 단위)", 1, 6, 3, key
 minutes = duration_hours * 60
 
 # Select target exchanges
-row = st.columns(2)
-with row[0]:
-    exchange1_name = st.selectbox("1st Exchange", exchange_dict)
-with row[1]:
-    exchange2_name = st.selectbox("2nd Exchange", {k: v for k, v in exchange_dict.items() if k != exchange1_name})
-    spread_data_name = f"{exchange1_name}_{exchange2_name}_data"
-    if spread_data_name not in st.session_state:
-        st.session_state[spread_data_name] = defaultdict(list)
+exchange1_name = st.sidebar.selectbox("1st Exchange", exchange_dict)
+exchange2_name = st.sidebar.selectbox("2nd Exchange", {k: v for k, v in exchange_dict.items() if k != exchange1_name})
+spread_data_name = f"{exchange1_name}_{exchange2_name}_data"
+if spread_data_name not in st.session_state:
+    st.session_state[spread_data_name] = defaultdict(list)
 
 # Find common symbols
 exchange1 = exchange_dict[exchange1_name]
@@ -36,6 +33,7 @@ exchange2 = exchange_dict[exchange2_name]
 
 df = create_spread_dataframe(exchange1, exchange2)
 update_chart_of_spread_dataframe(df, exchange1_name, exchange2_name)
+df.sort_values(by='spread_pct', ascending=False, inplace=True)
 
 top_symbols = df.index[:10]
 
