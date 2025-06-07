@@ -1,8 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from dashboard.exchanges import BinanceExchange, BybitExchange
-import dashboard.global_data as gd
+from exchanges import BinanceExchange, BybitExchange
 
 st.set_page_config(
     page_title="Historical Spread Analysis",

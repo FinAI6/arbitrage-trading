@@ -2,7 +2,6 @@ from collections import defaultdict
 from typing import Dict, Set, List, Tuple, Any
 import requests
 import pandas as pd
-import streamlit as st
 from .base_exchange import BaseExchange
 from dashboard.constants import *
 
@@ -16,11 +15,10 @@ def fetch_bitget_data(endpoint: str, params: Dict[str, Any] = {}) -> List[Dict]:
         response.raise_for_status()
         return response.json().get("data", [])
     except Exception as e:
-        st.error(f"❌ Bitget API 호출 실패 ({endpoint}): {e}")
+        print(f"❌ Bitget API 호출 실패 ({endpoint}): {e}")
         return []
 
 
-@st.cache_data(ttl=ST_CACHE_TTL)
 def get_bitget_tickers() -> defaultdict[str, list]:
     data = fetch_bitget_data("tickers", {"productType": PRODUCT_TYPE})
     ret = defaultdict(list)
@@ -38,7 +36,6 @@ def get_bitget_tickers() -> defaultdict[str, list]:
     return ret
 
 
-@st.cache_data(ttl=ST_CACHE_TTL)
 def get_bitget_prices() -> Tuple[Dict[str, float], Set[str]]:
     data = fetch_bitget_data("tickers", {"productType": PRODUCT_TYPE})
     prices, original_symbols = {}, {}
@@ -56,7 +53,6 @@ def get_bitget_prices() -> Tuple[Dict[str, float], Set[str]]:
     return prices, set(prices.keys())
 
 
-@st.cache_data(ttl=ST_CACHE_TTL)
 def get_bitget_funding_rates() -> Dict[str, float]:
     data = fetch_bitget_data("tickers", {"productType": PRODUCT_TYPE})
     return {
@@ -66,7 +62,6 @@ def get_bitget_funding_rates() -> Dict[str, float]:
     }
 
 
-@st.cache_data(ttl=ST_CACHE_TTL_KLINES)
 def get_bitget_klines(symbol: str, minutes: int) -> pd.DataFrame:
     data = fetch_bitget_data("candles", {
         "symbol": symbol,

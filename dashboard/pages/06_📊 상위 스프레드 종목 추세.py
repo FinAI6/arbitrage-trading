@@ -5,7 +5,7 @@ import pandas as pd
 import plotly.express as px
 
 from dashboard.charts import update_chart_of_spread_dataframe
-from dashboard.exchanges import BinanceExchange, BybitExchange
+from exchanges import BinanceExchange, BybitExchange
 from dashboard.global_data import exchange_dict
 from dashboard.spread import create_spread_dataframe
 

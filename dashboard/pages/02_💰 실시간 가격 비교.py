@@ -1,12 +1,10 @@
 from collections import defaultdict
 
 import streamlit as st
-from streamlit.column_config import Column, NumberColumn, AreaChartColumn
-import pandas as pd
+from streamlit.column_config import NumberColumn, AreaChartColumn
 from streamlit_autorefresh import st_autorefresh
 
 from dashboard.charts import update_chart_of_spread_dataframe
-from dashboard.exchanges import BaseExchange
 from dashboard.spread import create_spread_dataframe
 from dashboard.global_data import exchange_dict
 

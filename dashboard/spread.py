@@ -2,9 +2,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict
 
-import streamlit as st
 import pandas as pd
-from dashboard.exchanges import BaseExchange
+from exchanges import BaseExchange
 
 
 @dataclass

@@ -2,7 +2,6 @@ from collections import defaultdict
 from typing import Dict, Set, List, Tuple, Any
 import requests
 import pandas as pd
-import streamlit as st
 from .base_exchange import BaseExchange
 from dashboard.constants import *
 
@@ -14,11 +13,10 @@ def fetch_bybit_data(endpoint: str, params: Dict[str, Any] = {}) -> List[Dict]:
         r.raise_for_status()
         return r.json().get("result", {}).get("list", [])
     except Exception as e:
-        st.error(f"❌ Bybit API 호출 실패 ({endpoint}): {e}")
+        print(f"❌ Bybit API 호출 실패 ({endpoint}): {e}")
         return []
 
 
-@st.cache_data(ttl=ST_CACHE_TTL)
 def get_bybit_tickers() -> defaultdict[str, list]:
     data = fetch_bybit_data("tickers", {"category": "linear"})
     ret = defaultdict(list)
@@ -37,7 +35,6 @@ def get_bybit_tickers() -> defaultdict[str, list]:
     return ret
 
 
-@st.cache_data(ttl=ST_CACHE_TTL)
 def get_bybit_prices() -> Tuple[Dict[str, float], Set[str]]:
     data = fetch_bybit_data("tickers", {"category": "linear"})
     prices = {}
@@ -54,7 +51,6 @@ def get_bybit_prices() -> Tuple[Dict[str, float], Set[str]]:
     return prices, symbols
 
 
-@st.cache_data(ttl=ST_CACHE_TTL)
 def get_bybit_funding_rates() -> Dict[str, float]:
     data = fetch_bybit_data("tickers", {"category": "linear"})
     return {
@@ -64,7 +60,6 @@ def get_bybit_funding_rates() -> Dict[str, float]:
     }
 
 
-@st.cache_data(ttl=ST_CACHE_TTL_KLINES)
 def get_bybit_klines(symbol: str, minutes: int) -> pd.DataFrame:
     data = fetch_bybit_data("kline", {
         "category": "linear",
