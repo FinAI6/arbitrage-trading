@@ -1,8 +1,13 @@
+from collections import defaultdict
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+
+from dashboard.charts import update_chart_of_spread_dataframe
 from dashboard.exchanges import BinanceExchange, BybitExchange
-import dashboard.global_data as gd
+from dashboard.global_data import exchange_dict
+from dashboard.spread import create_spread_dataframe
 
 st.set_page_config(
     page_title="Top Spread Trends",
@@ -10,12 +15,27 @@ st.set_page_config(
     layout="wide"
 )
 
-st.markdown("### 🔍 스프레드 상위 10개 종목 - 과거 추이 분석 (1분봉 기준, Binance vs ByBit)")
-duration_hours = st.slider("조회 시간 (시간 단위)", 1, 6, 3, key="top_spread_duration")
+st.markdown("### 🔍 스프레드 상위 10개 종목 - 과거 추이 분석 (1분봉 기준)")
+
+duration_hours = st.sidebar.slider("조회 시간 (시간 단위)", 1, 6, 3, key="top_spread_duration")
 minutes = duration_hours * 60
 
-gd.update_spreads()
-top_symbols = [item["symbol"] for item in gd.top_spreads[:10]]
+# Select target exchanges
+exchange1_name = st.sidebar.selectbox("1st Exchange", exchange_dict)
+exchange2_name = st.sidebar.selectbox("2nd Exchange", {k: v for k, v in exchange_dict.items() if k != exchange1_name})
+spread_data_name = f"{exchange1_name}_{exchange2_name}_data"
+if spread_data_name not in st.session_state:
+    st.session_state[spread_data_name] = defaultdict(list)
+
+# Find common symbols
+exchange1 = exchange_dict[exchange1_name]
+exchange2 = exchange_dict[exchange2_name]
+
+df = create_spread_dataframe(exchange1, exchange2)
+update_chart_of_spread_dataframe(df, exchange1_name, exchange2_name)
+df.sort_values(by='spread_pct', ascending=False, inplace=True)
+
+top_symbols = df.index[:10]
 
 binance = BinanceExchange()
 bybit = BybitExchange()

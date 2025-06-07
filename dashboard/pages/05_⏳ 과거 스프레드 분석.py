@@ -11,7 +11,7 @@ st.set_page_config(
 )
 
 st.markdown("### ⏳ 과거 1분봉 스프레드 분석 (Binance vs ByBit)")
-volume_threshold = st.slider("📊 거래량 기준 (USDT)", 0, 10_000_000, 500_000, step=100_000)
+volume_threshold = st.sidebar.slider("📊 거래량 기준 (USDT)", 0, 10_000_000, 500_000, step=100_000)
 
 binance = BinanceExchange()
 bybit = BybitExchange()
@@ -25,8 +25,8 @@ common_symbols = [
     if s in binance_prices and s in bybit_prices and binance_volumes.get(s, 0) >= volume_threshold
 ]
 
-selected_symbol = st.selectbox("심볼 선택", sorted(common_symbols))
-duration_hours = st.slider("조회 시간 (시간 단위)", 1, 6, 3)
+selected_symbol = st.sidebar.selectbox("심볼 선택", sorted(common_symbols))
+duration_hours = st.sidebar.slider("조회 시간 (시간 단위)", 1, 6, 3)
 
 minutes = duration_hours * 60
 binance_df = binance.get_klines(selected_symbol, minutes)

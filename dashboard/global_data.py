@@ -17,6 +17,8 @@ if "alert_log" not in st.session_state:
 binance = BinanceExchange()
 bybit = BybitExchange()
 bitget = BitgetExchange()
+exchange_dict = {'Binance': binance, 'Bybit': bybit, 'Bitget': bitget}
+
 
 def update_spreads():
     global spread_list, top_spreads
