@@ -1,91 +1,86 @@
 from collections import defaultdict
-from typing import Dict, Set
+from typing import Dict, Set, List, Tuple, Any
 import requests
 import pandas as pd
 import streamlit as st
 from .base_exchange import BaseExchange
+from dashboard.constants import *
+
+PRODUCT_TYPE = "USDT-FUTURES"
 
 
-@st.cache_data(ttl=30)
-def get_bitget_tickers():
+def fetch_bitget_data(endpoint: str, params: Dict[str, Any] = {}) -> List[Dict]:
     try:
-        url = "https://api.bitget.com/api/v2/mix/market/tickers?productType=USDT-FUTURES"
-        r = requests.get(url, timeout=10)
-        r.raise_for_status()
-        data = r.json().get('data', [])
-        ret_dict = defaultdict(list)
-        for item in data:
-            if 'fundingRate' not in item or 'baseVolume' not in item or 'lastPr' not in item:
-                continue
-            ret_dict['symbol'].append(item['symbol'])
-            ret_dict['price'].append(float(item['lastPr']))
-            ret_dict['volume'].append(item['baseVolume'])
-            ret_dict['fundingRate'].append(item['fundingRate'])
-        return ret_dict
+        url = f"https://api.bitget.com/api/v2/mix/market/{endpoint}"
+        response = requests.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+        response.raise_for_status()
+        return response.json().get("data", [])
     except Exception as e:
-        st.error(f"❌ Bitget 펀딩피 정보를 불러올 수 없습니다: {e}")
-        return {}
+        st.error(f"❌ Bitget API 호출 실패 ({endpoint}): {e}")
+        return []
 
 
-@st.cache_data(ttl=30)
-def get_bitget_prices():
-    try:
-        url = "https://api.bitget.com/api/mix/v1/market/tickers?productType=umcbl"
-        r = requests.get(url, timeout=10)
-        r.raise_for_status()
-        data = r.json().get("data", [])
+@st.cache_data(ttl=ST_CACHE_TTL)
+def get_bitget_tickers() -> defaultdict[str, list]:
+    data = fetch_bitget_data("tickers", {"productType": PRODUCT_TYPE})
+    ret = defaultdict(list)
 
-        prices = {}
-        original_symbols = {}
-
-        for item in data:
-            raw_symbol = item.get("symbol", "")  # 예: BTCUSDT_UMCBL, ETHUSDT
-            if not raw_symbol or "last" not in item:
-                continue
-
-            # 정규화: BTC-USDT → BTCUSDT, BTCUSDT_UMCBL → BTCUSDT
-            normalized = raw_symbol.replace("-", "").split("_")[0]
-
-            prices[normalized] = float(item["last"])
-            original_symbols[normalized] = raw_symbol
-
-        return prices, set(prices.keys())
-
-    except Exception as e:
-        st.error(f"❌ Bitget 가격 정보를 불러올 수 없습니다: {e}")
-        return {}, set(), {}
+    for item in data:
+        if float(item.get("lastPr", 0)) == 0:
+            continue
+        try:
+            ret["symbol"].append(item["symbol"])
+            ret["price"].append(float(item["lastPr"]))
+            ret["volume"].append(item["baseVolume"])
+            ret["fundingRate"].append(item["fundingRate"])
+        except KeyError:
+            continue
+    return ret
 
 
-@st.cache_data(ttl=30)
-def get_bitget_funding_rates():
-    try:
-        url = "https://api.bitget.com/api/v2/mix/market/tickers?productType=USDT-FUTURES"
-        r = requests.get(url, timeout=10)
-        r.raise_for_status()
-        data = r.json().get('data', [])
-        return {
-            item['symbol']: float(item['fundingRate']) * 100
-            for item in data if item.get('fundingRate') not in (None, '', 'null')
-        }
-    except Exception as e:
-        st.error(f"❌ Bitget 펀딩피 정보를 불러올 수 없습니다: {e}")
-        return {}
+@st.cache_data(ttl=ST_CACHE_TTL)
+def get_bitget_prices() -> Tuple[Dict[str, float], Set[str]]:
+    data = fetch_bitget_data("tickers", {"productType": PRODUCT_TYPE})
+    prices, original_symbols = {}, {}
+
+    for item in data:
+        symbol = item.get("symbol")
+        price = item.get("lastPr")
+        if not symbol or price is None:
+            continue
+
+        normalized = symbol.replace("-", "").split("_")[0]
+        prices[normalized] = float(price)
+        original_symbols[normalized] = symbol
+
+    return prices, set(prices.keys())
 
 
-@st.cache_data(ttl=300)
-def get_bitget_klines(symbol, minutes):
-    try:
-        url = f"https://api.bitget.com/api/v2/mix/market/candles?symbol={symbol}&granularity=1m&limit={minutes}"
-        r = requests.get(url)
-        r.raise_for_status()
-        data = r.json().get('data', [])
-        df = pd.DataFrame(data, columns=["timestamp", "open", "high", "low", "close", "volume", "turnover"])
-        df["bitget_price"] = df["close"].astype(float)
-        df["index"] = range(len(df))
-        return df[["index", "bitget_price"]]
-    except Exception as e:
-        st.error(f"❌ Bitget 과거 데이터 오류: {e}")
+@st.cache_data(ttl=ST_CACHE_TTL)
+def get_bitget_funding_rates() -> Dict[str, float]:
+    data = fetch_bitget_data("tickers", {"productType": PRODUCT_TYPE})
+    return {
+        item["symbol"]: float(item["fundingRate"]) * 100
+        for item in data
+        if item.get("fundingRate") not in (None, "", "null")
+    }
+
+
+@st.cache_data(ttl=ST_CACHE_TTL_KLINES)
+def get_bitget_klines(symbol: str, minutes: int) -> pd.DataFrame:
+    data = fetch_bitget_data("candles", {
+        "symbol": symbol,
+        "granularity": "1m",
+        "limit": minutes
+    })
+
+    if not data:
         return pd.DataFrame()
+
+    df = pd.DataFrame(data, columns=["timestamp", "open", "high", "low", "close", "volume", "turnover"])
+    df["bitget_price"] = df["close"].astype(float)
+    df["index"] = range(len(df))
+    return df[["index", "bitget_price"]]
 
 
 class BitgetExchange(BaseExchange):
@@ -102,15 +97,12 @@ class BitgetExchange(BaseExchange):
 
     def get_24h_volume(self) -> Dict[str, float]:
         prices, _ = get_bitget_prices()
-        try:
-            url = "https://api.bitget.com/api/v2/mix/market/tickers?productType=USDT-FUTURES"
-            r = requests.get(url, timeout=10)
-            r.raise_for_status()
-            data = r.json().get('data', [])
-            return {item['symbol']: float(item['usdtVolume']) * prices.get(item['symbol'], 0) for item in data}
-        except Exception as e:
-            st.error(f"❌ Bitget 거래량 정보를 불러올 수 없습니다: {e}")
-            return {}
+        data = fetch_bitget_data("tickers", {"productType": PRODUCT_TYPE})
+        return {
+            item["symbol"]: float(item["usdtVolume"]) * prices.get(item["symbol"], 0)
+            for item in data
+            if item.get("usdtVolume") is not None
+        }
 
     def get_symbols(self) -> Set[str]:
         tickers = get_bitget_tickers()
