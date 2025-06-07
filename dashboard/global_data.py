@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import streamlit as st
 
-from dashboard.exchanges import BinanceExchange, BybitExchange, BitgetExchange
+from exchanges import BinanceExchange, BybitExchange, BitgetExchange
 from dashboard.notifications import send_telegram_alert
 
 # 사용자 설정

@@ -1,9 +1,8 @@
 from collections import defaultdict
-from typing import Dict, Set, List, Any
+from typing import Dict, Set, Any
 from datetime import datetime
 import requests
 import pandas as pd
-import streamlit as st
 from .base_exchange import BaseExchange
 from dashboard.constants import *
 
@@ -15,11 +14,10 @@ def fetch_binance_data(endpoint: str, params: Dict[str, Any] = {}) -> Any:
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        st.error(f"❌ Binance API 호출 실패 ({endpoint}): {e}")
+        print(f"❌ Binance API 호출 실패 ({endpoint}): {e}")
         return None
 
 
-@st.cache_data(ttl=ST_CACHE_TTL)
 def get_binance_funding_rates() -> Dict[str, float]:
     data = fetch_binance_data("premiumIndex")
     if not data:
@@ -32,7 +30,6 @@ def get_binance_funding_rates() -> Dict[str, float]:
     }
 
 
-@st.cache_data(ttl=ST_CACHE_TTL)
 def get_binance_24h_volume() -> Dict[str, float]:
     data = fetch_binance_data("ticker/24hr")
     if not data:
@@ -45,7 +42,6 @@ def get_binance_24h_volume() -> Dict[str, float]:
     }
 
 
-@st.cache_data(ttl=ST_CACHE_TTL)
 def get_binance_symbols() -> Set[str]:
     data = fetch_binance_data("exchangeInfo")
     if not data:
@@ -60,7 +56,6 @@ def get_binance_symbols() -> Set[str]:
     }
 
 
-@st.cache_data(ttl=ST_CACHE_TTL)
 def get_binance_prices() -> Dict[str, float]:
     data = fetch_binance_data("ticker/price")
     if not data:
@@ -73,7 +68,6 @@ def get_binance_prices() -> Dict[str, float]:
     }
 
 
-@st.cache_data(ttl=ST_CACHE_TTL_KLINES)
 def get_binance_klines(symbol: str, minutes: int) -> pd.DataFrame:
     end_time = int(datetime.utcnow().timestamp() * 1000)
     start_time = end_time - minutes * 60 * 1000
