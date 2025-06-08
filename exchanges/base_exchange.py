@@ -1,7 +1,15 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from dataclasses import dataclass
 from typing import Dict, Set
 import pandas as pd
+
+@dataclass
+class Ticker:
+    symbol: str
+    price: float
+    volume: float
+    funding_rate: float
 
 
 class BaseExchange(ABC):
@@ -13,7 +21,7 @@ class BaseExchange(ABC):
     """
 
     @abstractmethod
-    def get_tickers(self) -> defaultdict[str, list]:
+    def get_tickers(self) -> Dict[str, Ticker]:
         """Get tickers for all symbols
 
         """

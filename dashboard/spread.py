@@ -4,40 +4,22 @@ from typing import Dict
 
 import pandas as pd
 from exchanges import BaseExchange
+from exchanges.base_exchange import Ticker
 
 
-@dataclass
-class Ticker:
-    symbol: str
-    price: float
-    volume: float
-    funding_rate: float
-
-
-class ExchangeData:
-    def __init__(self, exchange: BaseExchange):
-        self.exchange = exchange
-        tickers = exchange.get_tickers()
-        self.symbols = tickers['symbol']
-        self.tickers: Dict[Ticker] = {}
-        for i, symbol in enumerate(tickers['symbol']):
-            self.tickers[symbol] = Ticker(symbol, tickers['price'][i],
-                                          tickers['volume'][i], tickers['fundingRate'][i])
-
-
-def get_tickers(exchange: BaseExchange) -> Dict[str, Ticker]:
-    tickers = exchange.get_tickers()
-    ret_dict = {}
-    for i, symbol in enumerate(tickers['symbol']):
-        ret_dict[symbol] = Ticker(symbol, tickers['price'][i],
-                                  tickers['volume'][i], tickers['fundingRate'][i])
-    return ret_dict
+# def get_tickers(exchange: BaseExchange) -> Dict[str, Ticker]:
+#     tickers = exchange.get_tickers()
+#     ret_dict = {}
+#     for i, symbol in enumerate(tickers['symbol']):
+#         ret_dict[symbol] = Ticker(symbol, tickers['price'][i],
+#                                   tickers['volume'][i], tickers['fundingRate'][i])
+#     return ret_dict
 
 
 def create_spread_dataframe(ex1: BaseExchange, ex2: BaseExchange) -> pd.DataFrame:
     data_dict = defaultdict(list)
-    ex1_tickers = get_tickers(ex1)
-    ex2_tickers = get_tickers(ex2)
+    ex1_tickers = ex1.get_tickers()
+    ex2_tickers = ex2.get_tickers()
     common_symbols = [s for s in set(ex1_tickers.keys()) & set(ex2_tickers.keys())]
     for symbol in common_symbols:
         ticker1: Ticker = ex1_tickers[symbol]

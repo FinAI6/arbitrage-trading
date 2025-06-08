@@ -7,6 +7,7 @@ import ccxt
 from dotenv import load_dotenv
 import traceback
 from collections import defaultdict, deque
+# from exchanges import BinanceExchange, BybitExchange
 
 load_dotenv()
 
@@ -28,7 +29,7 @@ spread_threshold = 1.0
 exit_percent = 0.9
 spread_hold_count = 2  # 스프레드 지속 조건 횟수, Top 1 연속 횟수
 TOP_SYMBOL_LIMIT = 300  # 거래량 상위 몇 개 종목만 사용할지 설정/ 전체종목개수 381개
-MIN_VOLUME_USDT = 5_000_000 #10_000_000  # ✅ 24시간 거래대금 최소 기준 (예: 1천만 USDT 이상)
+MIN_VOLUME_USDT = 5_000_000  # 10_000_000  # ✅ 24시간 거래대금 최소 기준 (예: 1천만 USDT 이상)
 
 recent_spread_history = defaultdict(lambda: deque(maxlen=spread_hold_count))
 open_positions = {}
@@ -83,6 +84,7 @@ def get_bybit_prices():
         print(f"❌ Bybit 가격 요청 실패: {e}")
         return {}, set()
 
+
 def get_bybit_24h_volumes():
     url = "https://api.bybit.com/v5/market/tickers?category=linear"
     try:
@@ -97,7 +99,14 @@ def get_bybit_24h_volumes():
         print(f"❌ Bybit 거래량 조회 실패: {e}")
         return {}
 
+
 def fetch_spread_data():
+    # binance = BinanceExchange()
+    # bybit = BybitExchange()
+    # tickers = binance.get_tickers()
+
+    # binance_symbols = binance.get_symbols()
+    # binance_prices = binance.get_prices()
     binance_symbols = get_binance_futures_symbols()
     binance_prices = get_binance_prices()
     bybit_prices, bybit_symbols = get_bybit_prices()
@@ -125,7 +134,7 @@ def fetch_spread_data():
         y_price = bybit_prices[symbol]
         raw_spread_pct = (b_price - y_price) / min(b_price, y_price) * 100  # ✅ 방향성 포함
         spread_list.append({
-            "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "symbol": symbol,
             "binance": b_price,
             "bybit": y_price,
@@ -134,7 +143,6 @@ def fetch_spread_data():
         })
 
     return sorted(spread_list, key=lambda x: abs(x["spread_pct"]), reverse=True)
-
 
 
 def get_filled_amount(exchange, order_id, symbol, params=None):
@@ -157,7 +165,6 @@ def should_enter_position(symbol, spread_pct):
     return False
 
 
-
 def safe_set_leverage(exchange, symbol, leverage):
     try:
         market = exchange.market(symbol)
@@ -174,6 +181,7 @@ def safe_set_leverage(exchange, symbol, leverage):
     except Exception as e:
         print(f"❌ 레버리지 설정 중 오류 ({exchange.id}, {symbol}): {e}")
 
+
 def enter_position(symbol, b_price, y_price, spread_pct):
     higher_exchange, lower_exchange = (binance, bybit) if b_price > y_price else (bybit, binance)
     higher_name, lower_name = ("binance", "bybit") if b_price > y_price else ("bybit", "binance")
@@ -184,7 +192,6 @@ def enter_position(symbol, b_price, y_price, spread_pct):
     if not lower_symbol or not higher_symbol:
         print(f"⛔️ 유효하지 않은 심볼 → 건너뜀: {symbol}")
         return
-
 
     try:
         # category parameter for Bybit
@@ -252,7 +259,8 @@ def enter_position(symbol, b_price, y_price, spread_pct):
         long_filled = long_order.get('filled')
         if not long_filled:
             try:
-                pos = lower_exchange.fetch_position(lower_symbol, params=bybit_params if lower_exchange.id == 'bybit' else {})
+                pos = lower_exchange.fetch_position(lower_symbol,
+                                                    params=bybit_params if lower_exchange.id == 'bybit' else {})
                 long_filled = abs(float(pos.get('contracts', 0)))
                 print(f"📦 포지션에서 롱 수량 확인됨 → {long_filled}")
             except Exception as e:
@@ -313,8 +321,10 @@ def exit_position(symbol, current_spread):
 
         # filled 확인: fallback to fetch_closed_orders
         time.sleep(1.5)
-        long_filled = long_order.get('filled') or get_filled_amount(long_exchange, long_order['id'], long_symbol, long_params)
-        short_filled = short_order.get('filled') or get_filled_amount(short_exchange, short_order['id'], short_symbol, short_params)
+        long_filled = long_order.get('filled') or get_filled_amount(long_exchange, long_order['id'], long_symbol,
+                                                                    long_params)
+        short_filled = short_order.get('filled') or get_filled_amount(short_exchange, short_order['id'], short_symbol,
+                                                                      short_params)
 
         print(f"✅ 롱 청산: {long_filled}개 @ {long_order.get('average', 'N/A')}")
         print(f"✅ 숏 청산: {short_filled}개 @ {short_order.get('average', 'N/A')}")
@@ -324,6 +334,7 @@ def exit_position(symbol, current_spread):
     except Exception as e:
         print(f"❌ 청산 실패 ({symbol}): {e}")
         traceback.print_exc()
+
 
 csv_filename = "spread_log.csv"
 with open(csv_filename, mode='w', newline='') as f:
@@ -341,6 +352,7 @@ print(f"📊 공통 종목 수: {len(initial_spreads)}개\n")
 
 try:
     while True:
+        start_time = time.time()
         all_spreads = fetch_spread_data()
         top_3 = all_spreads[:3]
         if top_3:
@@ -352,8 +364,9 @@ try:
 
         filtered = [item for item in all_spreads if abs(item['spread_pct']) >= spread_threshold]
         now = datetime.utcnow().strftime('%H:%M:%S')
+        fetch_time = time.time() - start_time
 
-        print(f"[{now}] 🔝 Top3 스프레드: ", " | ".join([
+        print(f"[{now}, {fetch_time*1000:.0f}ms] 🔝 Top3 스프레드: ", " | ".join([
             f"{item['symbol']} ({(item['binance'] - item['bybit']) / min(item['binance'], item['bybit']) * 100:+.2f}%)"
             for item in top_3
         ]))
