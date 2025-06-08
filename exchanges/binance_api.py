@@ -3,7 +3,7 @@ from typing import Dict, Set, Any
 from datetime import datetime
 import requests
 import pandas as pd
-from .base_exchange import BaseExchange
+from .base_exchange import BaseExchange, Ticker
 from dashboard.constants import *
 
 
@@ -99,20 +99,16 @@ class BinanceExchange(BaseExchange):
     def get_exchange_name(self) -> str:
         return "Binance"
 
-    def get_tickers(self) -> defaultdict[str, list]:
+    def get_tickers(self) -> Dict[str, Ticker]:
         prices = get_binance_prices()
         volumes = get_binance_24h_volume()
         funding_rates = get_binance_funding_rates()
         symbols = get_binance_symbols()
 
-        ret = defaultdict(list)
-
+        ret = {}
         for symbol in symbols:
             if symbol in prices and symbol in volumes and symbol in funding_rates:
-                ret["symbol"].append(symbol)
-                ret["price"].append(prices[symbol])
-                ret["volume"].append(volumes[symbol])
-                ret["fundingRate"].append(funding_rates[symbol])
+                ret[symbol] = Ticker(symbol, prices[symbol], volumes[symbol], funding_rates[symbol])
         return ret
 
     def get_funding_rates(self) -> Dict[str, float]:
