@@ -1,0 +1,92 @@
+import os, time, hmac, hashlib, requests, urllib.parse
+from dotenv import load_dotenv
+
+load_dotenv()
+API_KEY    = os.getenv("BINANCE_API_KEY")
+API_SECRET = os.getenv("BINANCE_SECRET")
+BASE_URL   = "https://fapi.binance.com"
+
+def sign(query_string: str) -> str:
+    return hmac.new(
+        API_SECRET.encode(),
+        query_string.encode(),
+        hashlib.sha256
+    ).hexdigest()
+
+def get_price(symbol):
+    url = f"{BASE_URL}/fapi/v1/ticker/price?symbol={symbol}"
+    res = requests.get(url)
+    data = res.json()
+    return float(data['price'])
+
+def build_signed_url(symbol, side, quantity):
+    endpoint = "/fapi/v1/order"
+    params = {
+        "symbol":     symbol,
+        "side":       side,
+        "type":       "MARKET",
+        "quantity":   f"{quantity:.7f}",
+        "recvWindow": 10000,
+    }
+
+    # query string without timestamp for pre-signing
+    base_query = urllib.parse.urlencode(params, safe=":")
+    return endpoint, params, base_query
+
+def place_market_order(endpoint, params, base_query, side):
+    # 타임스탬프 갱신 후 서명
+    params["timestamp"] = int(time.time() * 1000)
+    query_string = urllib.parse.urlencode(params, safe=":")
+    signature = sign(query_string)
+    url = f"{BASE_URL}{endpoint}?{query_string}&signature={signature}"
+    headers = {"X-MBX-APIKEY": API_KEY}
+
+    start_time = time.time()
+    res = requests.post(url, headers=headers)
+    end_time = time.time()
+
+    elapsed_ms = int((end_time - start_time) * 1000)
+
+    try:
+        response = res.json()
+        print(f"📡 응답: {response.get('status', response)} ⏱️ 시간: {elapsed_ms}ms")
+    except Exception as e:
+        print("❌ 응답 처리 실패:", e)
+        return None
+
+    return elapsed_ms
+
+def repeat_orders(symbol, quantity, repeat_count=10):
+    print("📈 최초 가격 조회 중...")
+    try:
+        price = get_price(symbol)
+        print(f"✅ 현재가: {price}")
+    except Exception as e:
+        print("❌ 가격 조회 실패:", e)
+        return
+
+    endpoint, params_template, base_query = build_signed_url(symbol, "BUY", quantity)
+    times = []
+
+    for i in range(repeat_count):
+        side = "BUY" if i % 2 == 0 else "SELL"
+        print(f"\n🚀 {i+1}번째 {side} 시장가 주문 실행 중...")
+
+        # 딕셔너리 복사 후 사이드 변경
+        params = params_template.copy()
+        params["side"] = side
+        base_query = urllib.parse.urlencode({k: v for k, v in params.items() if k != "timestamp"}, safe=":")
+
+        t = place_market_order(endpoint, params, base_query, side)
+        if t is not None:
+            times.append(t)
+        time.sleep(1)
+
+    if len(times) >= 2:
+        avg_time = sum(times[1:]) / (len(times) - 1)
+        print(f"\n📊 첫 주문 제외한 평균 체결 시간 (9회): {avg_time:.1f}ms")
+    else:
+        print("⚠️ 유효한 주문이 부족합니다.")
+
+# ✅ 실행
+repeat_orders("NXPCUSDT", quantity=4, repeat_count=10)
