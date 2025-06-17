@@ -395,65 +395,65 @@ def exit_position(symbol, current_spread):
 
 
 
-def exit_position(symbol, current_spread):
-    pos = open_positions.get(symbol)
-    if not pos:
-        return
+# def exit_position(symbol, current_spread):
+#     pos = open_positions.get(symbol)
+#     if not pos:
+#         return
 
-    print(f"💸 청산 시도: {symbol} | 현재 스프레드: {current_spread:.2f}% | 진입 스프레드: {pos['entry_spread']:.2f}%")
+#     print(f"💸 청산 시도: {symbol} | 현재 스프레드: {current_spread:.2f}% | 진입 스프레드: {pos['entry_spread']:.2f}%")
 
-    try:
-        long_exchange = pos['long_exchange']
-        short_exchange = pos['short_exchange']
-        long_symbol = pos['long_symbol']
-        short_symbol = pos['short_symbol']
-        long_qty = float(pos['long_qty'])
-        short_qty = float(pos['short_qty'])
+#     try:
+#         long_exchange = pos['long_exchange']
+#         short_exchange = pos['short_exchange']
+#         long_symbol = pos['long_symbol']
+#         short_symbol = pos['short_symbol']
+#         long_qty = float(pos['long_qty'])
+#         short_qty = float(pos['short_qty'])
 
-        # params for Bybit
-        long_params = {'category': 'linear'} if long_exchange.id == 'bybit' else {}
-        short_params = {'category': 'linear'} if short_exchange.id == 'bybit' else {}
+#         # params for Bybit
+#         long_params = {'category': 'linear'} if long_exchange.id == 'bybit' else {}
+#         short_params = {'category': 'linear'} if short_exchange.id == 'bybit' else {}
 
-        # # 청산 주문
-        # long_order = long_exchange.create_market_sell_order(long_symbol, long_qty, params=long_params)
-        # short_order = short_exchange.create_market_buy_order(short_symbol, short_qty, params=short_params)
+#         # # 청산 주문
+#         # long_order = long_exchange.create_market_sell_order(long_symbol, long_qty, params=long_params)
+#         # short_order = short_exchange.create_market_buy_order(short_symbol, short_qty, params=short_params)
 
-        # ✅ 변경: 지정가 청산
-        # 현재가 기준 약간 유리한 가격으로 지정가 주문
-        try:
-            long_ticker = long_exchange.fetch_ticker(long_symbol)
-            short_ticker = short_exchange.fetch_ticker(short_symbol)
-            long_bid = long_ticker.get('bid')
-            short_ask = short_ticker.get('ask')
-        except Exception as e:
-            print(f"⚠️ 호가 정보 조회 실패: {e}")
-            long_bid, short_ask = None, None
-        use_market_order = long_bid is None or short_ask is None
+#         # ✅ 변경: 지정가 청산
+#         # 현재가 기준 약간 유리한 가격으로 지정가 주문
+#         try:
+#             long_ticker = long_exchange.fetch_ticker(long_symbol)
+#             short_ticker = short_exchange.fetch_ticker(short_symbol)
+#             long_bid = long_ticker.get('bid')
+#             short_ask = short_ticker.get('ask')
+#         except Exception as e:
+#             print(f"⚠️ 호가 정보 조회 실패: {e}")
+#             long_bid, short_ask = None, None
+#         use_market_order = long_bid is None or short_ask is None
 
-        if use_market_order:
-            print("⚠️ 호가 없음 → 시장가 청산 시도")
-            long_order = long_exchange.create_market_sell_order(long_symbol, long_qty, params=long_params)
-            short_order = short_exchange.create_market_buy_order(short_symbol, short_qty, params=short_params)
-        else:
-            long_limit_price = long_bid * 0.999
-            short_limit_price = short_ask * 1.001
+#         if use_market_order:
+#             print("⚠️ 호가 없음 → 시장가 청산 시도")
+#             long_order = long_exchange.create_market_sell_order(long_symbol, long_qty, params=long_params)
+#             short_order = short_exchange.create_market_buy_order(short_symbol, short_qty, params=short_params)
+#         else:
+#             long_limit_price = long_bid * 0.999
+#             short_limit_price = short_ask * 1.001
 
-            long_order = long_exchange.create_limit_sell_order(long_symbol, long_qty, long_limit_price, params=long_params)
-            short_order = short_exchange.create_limit_buy_order(short_symbol, short_qty, short_limit_price, params=short_params)
+#             long_order = long_exchange.create_limit_sell_order(long_symbol, long_qty, long_limit_price, params=long_params)
+#             short_order = short_exchange.create_limit_buy_order(short_symbol, short_qty, short_limit_price, params=short_params)
 
-        # filled 확인: fallback to fetch_closed_orders
-        time.sleep(1.5)
-        long_filled = long_order.get('filled') or get_filled_amount(long_exchange, long_order['id'], long_symbol, long_params)
-        short_filled = short_order.get('filled') or get_filled_amount(short_exchange, short_order['id'], short_symbol, short_params)
+#         # filled 확인: fallback to fetch_closed_orders
+#         time.sleep(1.5)
+#         long_filled = long_order.get('filled') or get_filled_amount(long_exchange, long_order['id'], long_symbol, long_params)
+#         short_filled = short_order.get('filled') or get_filled_amount(short_exchange, short_order['id'], short_symbol, short_params)
 
-        print(f"✅ 롱 청산: {long_filled}개 @ {long_order.get('average', 'N/A')}")
-        print(f"✅ 숏 청산: {short_filled}개 @ {short_order.get('average', 'N/A')}")
+#         print(f"✅ 롱 청산: {long_filled}개 @ {long_order.get('average', 'N/A')}")
+#         print(f"✅ 숏 청산: {short_filled}개 @ {short_order.get('average', 'N/A')}")
 
-        del open_positions[symbol]
+#         del open_positions[symbol]
 
-    except Exception as e:
-        print(f"❌ 청산 실패 ({symbol}): {e}")
-        traceback.print_exc()
+#     except Exception as e:
+#         print(f"❌ 청산 실패 ({symbol}): {e}")
+#         traceback.print_exc()
 
 csv_filename = "spread_log.csv"
 with open(csv_filename, mode='w', newline='') as f:
