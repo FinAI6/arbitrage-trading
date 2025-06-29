@@ -1,5 +1,9 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "arbitrage-trading"
+name = "crypto-arbitrage-trading"
 version = "0.1.0"
 description = "암호화폐 거래소 간 스프레드 모니터링 대시보드"
 authors = [
@@ -16,10 +20,6 @@ dependencies = [
 requires-python = ">=3.10"
 readme = "README.md"
 license = { text = "MIT" }
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
 
 [tool.hatch.metadata]
 allow-direct-references = true
