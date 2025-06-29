@@ -42,7 +42,7 @@ def create_config_template(path: str = "config.json"):
 
     template = {
         "trading": {
-            "simulation_mode": True,
+            "simulation_mode": False,
             "max_positions": 3,
             "target_usdt": 100,
             "spread_threshold": 0.5,

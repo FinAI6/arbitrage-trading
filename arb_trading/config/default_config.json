@@ -1,6 +1,6 @@
 {
     "trading": {
-        "simulation_mode": true,
+        "simulation_mode": false,
         "max_positions": 3,
         "target_usdt": 100,
         "spread_threshold": 1.2,
