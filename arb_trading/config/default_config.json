@@ -1,0 +1,50 @@
+{
+    "trading": {
+        "simulation_mode": false,
+        "max_positions": 3,
+        "target_usdt": 100,
+        "spread_threshold": 1.2,
+        "exit_percent": 1.2,
+        "spread_hold_count": 3,
+        "top_symbol_limit": 300,
+        "min_volume_usdt": 5000000
+    },
+    "exchanges": {
+        "binance": {
+            "enabled": true,
+            "fetch_only": false,
+            "api_key": "",
+            "secret": ""
+        },
+        "bybit": {
+            "enabled": true,
+            "fetch_only": false,
+            "api_key": "",
+            "secret": ""
+        }
+    },
+    "orders": {
+        "default_type": "limit",
+        "market_order_enabled": false,
+        "stop_loss_enabled": false,
+        "limit_order_slippage": 0.001
+    },
+    "monitoring": {
+        "performance_logging": true,
+        "fetch_interval": 5,
+        "log_buffer_size": 100
+    },
+    "notifications": {
+        "slack_webhook": "",
+        "telegram_token": "",
+        "telegram_chat_id": "",
+        "email_smtp": "",
+        "email_user": "",
+        "email_password": ""
+    },
+    "risk_management": {
+        "max_loss_percent": -10,
+        "position_timeout_seconds": 300,
+        "order_timeout_seconds": 60
+    }
+}
