@@ -673,8 +673,19 @@ class TakerTakerTrader(BaseTrader):
 
         long_qty, short_qty = self.calculate_sum_qty(long_result, short_result)
 
-        long_price_average = sum(long_cost_list) / long_qty
-        short_price_average = sum(short_cost_list) / short_qty
+        # Division by zero 방지
+        if long_qty == 0:
+            print(f"⚠️ [{self.symbol}] Long quantity is zero, cannot calculate average price")
+            long_price_average = 0
+        else:
+            long_price_average = sum(long_cost_list) / long_qty
+
+        if short_qty == 0:
+            print(f"⚠️ [{self.symbol}] Short quantity is zero, cannot calculate average price")
+            short_price_average = 0
+        else:
+            short_price_average = sum(short_cost_list) / short_qty
+
         return long_price_average, short_price_average
 
     @staticmethod
