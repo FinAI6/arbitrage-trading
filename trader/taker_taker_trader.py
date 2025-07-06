@@ -125,7 +125,7 @@ class TakerTakerTrader(BaseTrader):
             self.status = "end"
             return None
 
-        # Case 2. 최소수량 이하 체결 / 최소수량 이하 체결 -> 최소 수량 추가 거래
+        # Case 2. 최소수량 이하 미체결 / 최소수량 이하 미체결 -> 최소 수량 추가 거래
         if long_cancel_result['filled'] < long_min_qty and short_cancel_result['filled'] < short_min_qty:
             print(f"⚠️  [{self.symbol}] CASE 2: Both fills below minimum quantity - Attempting additional trades")
             print(f"   🟢 {self.enter_order_result['long_exchange'].id.upper()}: {long_cancel_result['filled']:.0f}/{long_cancel_result['amount']:.0f} filled (min: {long_min_qty:.0f})")
@@ -162,6 +162,13 @@ class TakerTakerTrader(BaseTrader):
                 if long_order_result['status'] == 'closed' and short_order_result['status'] == 'closed':
                     break
                 await asyncio.sleep(0.1)
+            else:
+                if long_order_result['status'] != 'closed':
+                    additional_long_order = await self.enter_order_result['long_exchange'].create_market_buy_order(self.enter_order_result['long_symbol'], long_adjusted_remain_qty)
+                    self.append_long_short_order_result(long_order_result=additional_long_order)
+                elif short_order_result['status'] != 'closed':
+                    additional_short_order = await self.enter_order_result['short_exchange'].create_market_sell_order(self.enter_order_result['short_symbol'], short_adjusted_remain_qty)
+                    self.append_long_short_order_result(short_order_result=additional_short_order)
 
             self.append_long_short_order_result(long_order_result=long_order_result,
                                                 short_order_result=short_order_result)
@@ -199,6 +206,16 @@ class TakerTakerTrader(BaseTrader):
                 if short_order_result['status'] == 'closed':
                     break
                 await asyncio.sleep(0.1)
+            else:
+                if short_order_result['status'] != 'closed':
+                    remain_qty = adjusted_remain_qty - short_order_result['filled']
+                    adjusted_remain_qty = self.make_qty_step(
+                        market=self.enter_order_result['short_exchange'].markets[self.enter_order_result['short_symbol']],
+                        qty=remain_qty,
+                        adjust_type='round')
+                    additional_short_order = await self.enter_order_result['short_exchange'].create_market_sell_order(self.enter_order_result['short_symbol'], adjusted_remain_qty)
+                    self.append_long_short_order_result(long_order_result=None,
+                                                        short_order_result=additional_short_order)
 
             self.append_long_short_order_result(long_order_result=None,
                                                 short_order_result=short_order_result)
@@ -234,6 +251,16 @@ class TakerTakerTrader(BaseTrader):
                 if long_order_result['status'] == 'closed':
                     break
                 await asyncio.sleep(0.1)
+            else:
+                if long_order_result['status'] != 'closed':
+                    remain_qty = adjusted_remain_qty - long_order_result['filled']
+                    adjusted_remain_qty = self.make_qty_step(
+                        market=self.enter_order_result['long_exchange'].markets[self.enter_order_result['long_symbol']],
+                        qty=remain_qty,
+                        adjust_type='round')
+                    additional_long_order = await self.enter_order_result['long_exchange'].create_market_sell_order(self.enter_order_result['long_symbol'], adjusted_remain_qty)
+                    self.append_long_short_order_result(long_order_result=additional_long_order,
+                                                        short_order_result=None)
 
             self.append_long_short_order_result(long_order_result=long_order_result,
                                                 short_order_result=None)
@@ -283,6 +310,19 @@ class TakerTakerTrader(BaseTrader):
                     if short_order_result['status'] == 'closed':
                         break
                     await asyncio.sleep(0.1)
+                else:
+                    if short_order_result['status'] != 'closed':
+                        remain_qty = adjusted_remain_qty - short_order_result['filled']
+                        adjusted_remain_qty = self.make_qty_step(
+                            market=self.enter_order_result['short_exchange'].markets[self.enter_order_result['short_symbol']],
+                            qty=remain_qty,
+                            adjust_type='round')
+                        additional_short_order = await self.enter_order_result[
+                            'short_exchange'].create_market_sell_order(self.enter_order_result['short_symbol'],
+                                                                       adjusted_remain_qty)
+                        self.append_long_short_order_result(long_order_result=None,
+                                                            short_order_result=additional_short_order)
+
 
                 self.append_long_short_order_result(long_order_result=None,
                                                     short_order_result=short_order_result)
@@ -318,6 +358,17 @@ class TakerTakerTrader(BaseTrader):
                     if long_order_result['status'] == 'closed':
                         break
                     await asyncio.sleep(0.1)
+                else:
+                    if long_order_result['status'] != 'closed':
+                        remain_qty = adjusted_remain_qty - long_order_result['filled']
+                        adjusted_remain_qty = self.make_qty_step(
+                            market=self.enter_order_result['long_exchange'].markets[self.enter_order_result['long_symbol']],
+                            qty=remain_qty,
+                            adjust_type='round')
+                        additional_long_order = await self.enter_order_result['long_exchange'].create_market_sell_order(
+                            self.enter_order_result['long_symbol'], adjusted_remain_qty)
+                        self.append_long_short_order_result(long_order_result=additional_long_order,
+                                                            short_order_result=None)
 
                 self.append_long_short_order_result(long_order_result=long_order_result,
                                                     short_order_result=None)
