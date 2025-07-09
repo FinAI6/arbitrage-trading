@@ -1,5 +1,7 @@
 import asyncio
+import json
 from datetime import datetime
+import aiofiles
 
 from aggregation_manager import AggregationManager
 from trading_manager import TradingManager
@@ -37,8 +39,14 @@ class MonitoringManager:
 
         self.running = True
 
+        count = 0
         while self.running:
+            count += 1
             await self.monitor_spreads()
+            if count % 60000 == 0:
+                latest_data = self.aggregation_manager.get_latest_spreads()
+                async with aiofiles.open('spread_log.txt', 'a+') as f:
+                    await f.write(f"[{datetime.now()}]\n{json.dumps(latest_data, ensure_ascii=False)}\n\n")
             await asyncio.sleep(interval)
 
     async def monitor_spreads(self):
