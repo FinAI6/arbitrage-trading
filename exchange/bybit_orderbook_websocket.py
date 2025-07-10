@@ -302,8 +302,6 @@ class BybitOrderbookWebsocket:
                             # Store as (bid_price, ask_price, bid_qty, ask_qty, volume_24h)
                             self.data[symbol] = (bid_price, ask_price, bid_qty, ask_qty, volume_usdt_24h)
 
-                            print(f"ORDERBOOK: {datetime.now()} {symbol} Bid: {bid_price} Ask: {ask_price} Volume24h: {volume_usdt_24h:.2f}USDT")
-
                             # Optional: Print sample data for debugging
                             # if symbol == 'CHILLGUYUSDT':
                             #     print(f"ORDERBOOK: {datetime.now()} {symbol} Bid: {bid_price} Ask: {ask_price}")

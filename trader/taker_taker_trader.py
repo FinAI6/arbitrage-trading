@@ -656,7 +656,9 @@ class TakerTakerTrader(BaseTrader):
             print("=" * 60)
             print(f"🚀 진입 시도: {symbol}")
             print(f"롱: {lower_exchange.id} - {lower_qty} | 숏: {higher_exchange.id} - {higher_qty}")
-            print(f"가격: B={lastest_data['binance_price']}, Y={lastest_data['bybit_price']} | 스프레드={lastest_data['spread_pct']:+.2f}%")
+            print(f"Binance 가격: Ask {lastest_data['binance_ask_price']} | Bid {lastest_data['binance_bid_price']}")
+            print(f"Bybit   가격: Ask {lastest_data['bybit_ask_price']} | Bid {lastest_data['bybit_bid_price']}")
+            print(f"스프레드={lastest_data['spread_pct']:+.2f}%")
 
             bybit_params = {'category': 'linear'}
 
