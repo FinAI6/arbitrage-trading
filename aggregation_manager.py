@@ -65,7 +65,7 @@ class AggregationManager:
             binance_volume = binance_data[symbol][-1]
             bybit_bid_price = bybit_data[symbol][0]
             bybit_ask_price = bybit_data[symbol][1]
-            bybit_volume = bybit_data[symbol][-11]
+            bybit_volume = bybit_data[symbol][-1]
             # binance_price = binance_data[symbol][0]
             # bybit_price = bybit_data[symbol][0]
             # binance_volume = binance_data[symbol][1]
