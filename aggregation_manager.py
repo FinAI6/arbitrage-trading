@@ -142,7 +142,8 @@ class AggregationManager:
         latest_spreads = {}
         for symbol, data_deque in self.spread_data.items():
             if data_deque:  # Check if deque is not empty
-                latest_spreads[symbol] = data_deque[-1]['spread_pct']
+                latest_spreads[symbol] = {"positive_spread": data_deque[-1]['positive_spread_pct'],
+                                          "negative_spread": data_deque[-1]['negative_spread_pct'],}
         return latest_spreads
 
     def get_lastest_spread_by_symbol(self, symbol):
