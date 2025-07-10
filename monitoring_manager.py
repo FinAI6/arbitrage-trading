@@ -83,9 +83,9 @@ class MonitoringManager:
             #     print(datetime.now(), symbol, list(data_deque)[-1]['spread_pct'])
 
             # Check last n entries for consecutive positive spreads
-            if all(entry['positive_spread'] for entry in list(data_deque)[-self.consecutive_count:]):
+            if all(entry['positive_spread_check'] for entry in list(data_deque)[-self.consecutive_count:]):
                 # Calculate average spread percentage for ranking
-                avg_spread_pct = sum(abs(entry['spread_pct']) for entry in list(data_deque)[-self.consecutive_count:]) / self.consecutive_count
+                avg_spread_pct = sum(abs(entry['positive_spread_pct']) for entry in list(data_deque)[-self.consecutive_count:]) / self.consecutive_count
                 positive_consecutive.append((symbol, {
                     'spread_pct': avg_spread_pct,
                     'direction': 'positive',
@@ -93,9 +93,9 @@ class MonitoringManager:
                 }))
 
             # Check last n entries for consecutive negative spreads
-            elif all(entry['negative_spread'] for entry in list(data_deque)[-self.consecutive_count:]):
+            elif all(entry['negative_spread_check'] for entry in list(data_deque)[-self.consecutive_count:]):
                 # Calculate average spread percentage for ranking
-                avg_spread_pct = sum(abs(entry['spread_pct']) for entry in list(data_deque)[-self.consecutive_count:]) / self.consecutive_count
+                avg_spread_pct = sum(abs(entry['negative_spread_pct']) for entry in list(data_deque)[-self.consecutive_count:]) / self.consecutive_count
                 negative_consecutive.append((symbol, {
                     'spread_pct': avg_spread_pct,
                     'direction': 'negative',
