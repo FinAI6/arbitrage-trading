@@ -140,8 +140,13 @@ class TakerTakerTrader(BaseTrader):
                 qty=long_min_qty,
                 adjust_type='ceil')
 
-            short_adjusted_price = float(short_cancel_result['price']) * sell_taker_price_margin
-            long_adjusted_price = float(long_cancel_result['price']) * buy_taker_price_margin
+            current_data = self.get_lastest_data()
+            short_price = current_data[f'{self.enter_order_result['short_exchange'].id}_bid_price']
+            long_price = current_data[f'{self.enter_order_result['long_exchange'].id}_ask_price']
+            short_adjusted_price = float(short_price) * sell_taker_price_margin
+            long_adjusted_price = float(long_price) * buy_taker_price_margin
+            # short_adjusted_price = float(short_cancel_result['price']) * sell_taker_price_margin
+            # long_adjusted_price = float(long_cancel_result['price']) * buy_taker_price_margin
 
             short_order_result = await self.enter_order_result['short_exchange'].create_limit_sell_order(self.enter_order_result['short_symbol'], short_adjusted_remain_qty, short_adjusted_price)
             long_order_result = await self.enter_order_result['long_exchange'].create_limit_buy_order(self.enter_order_result['long_symbol'], long_adjusted_remain_qty, long_adjusted_price)
@@ -191,7 +196,11 @@ class TakerTakerTrader(BaseTrader):
                 qty=remain_qty,
                 adjust_type='round')
 
-            adjusted_price = float(short_cancel_result['price']) * sell_taker_price_margin
+            current_data = self.get_lastest_data()
+            short_price = current_data[f'{self.enter_order_result['short_exchange'].id}_bid_price']
+            short_adjusted_price = float(short_price) * sell_taker_price_margin
+
+            adjusted_price = float(short_adjusted_price) * sell_taker_price_margin
 
             short_order_result = await self.enter_order_result['short_exchange'].create_limit_sell_order(self.enter_order_result['short_symbol'], adjusted_remain_qty, adjusted_price)
 
@@ -236,7 +245,11 @@ class TakerTakerTrader(BaseTrader):
                 qty=remain_qty,
                 adjust_type='round')
 
-            adjusted_price = float(long_cancel_result['price']) * buy_taker_price_margin
+            current_data = self.get_lastest_data()
+            long_price = current_data[f'{self.enter_order_result['long_exchange'].id}_ask_price']
+            long_adjusted_price = float(long_price) * buy_taker_price_margin
+
+            adjusted_price = float(long_adjusted_price) * buy_taker_price_margin
 
             long_order_result = await self.enter_order_result['long_exchange'].create_limit_buy_order(self.enter_order_result['long_symbol'], adjusted_remain_qty, adjusted_price)
 
@@ -258,7 +271,7 @@ class TakerTakerTrader(BaseTrader):
                         market=self.enter_order_result['long_exchange'].markets[self.enter_order_result['long_symbol']],
                         qty=remain_qty,
                         adjust_type='round')
-                    additional_long_order = await self.enter_order_result['long_exchange'].create_market_sell_order(self.enter_order_result['long_symbol'], adjusted_remain_qty)
+                    additional_long_order = await self.enter_order_result['long_exchange'].create_market_buy_order(self.enter_order_result['long_symbol'], adjusted_remain_qty)
                     self.append_long_short_order_result(long_order_result=additional_long_order,
                                                         short_order_result=None)
 
@@ -296,7 +309,12 @@ class TakerTakerTrader(BaseTrader):
                     qty=remain_qty,
                     adjust_type='round')
 
-                adjusted_price = float(short_cancel_result['price']) * sell_taker_price_margin
+                current_data = self.get_lastest_data()
+                short_price = current_data[f'{self.enter_order_result['short_exchange'].id}_bid_price']
+                short_adjusted_price = float(short_price) * sell_taker_price_margin
+
+                adjusted_price = float(short_adjusted_price) * sell_taker_price_margin
+
                 short_order_result = await self.enter_order_result['short_exchange'].create_limit_sell_order(self.enter_order_result['short_symbol'], adjusted_remain_qty, adjusted_price)
 
                 max_taker_enter_order_time = self.config_manager.getfloat('TRADER', 'max_taker_enter_order_time')
@@ -345,8 +363,14 @@ class TakerTakerTrader(BaseTrader):
                     qty=remain_qty,
                     adjust_type='round')
 
-                adjusted_price = float(long_cancel_result['price']) * buy_taker_price_margin
+                current_data = self.get_lastest_data()
+                long_price = current_data[f'{self.enter_order_result['long_exchange'].id}_ask_price']
+                long_adjusted_price = float(long_price) * buy_taker_price_margin
+
+                adjusted_price = float(long_adjusted_price) * buy_taker_price_margin
+
                 long_order_result = await self.enter_order_result['long_exchange'].create_limit_buy_order(self.enter_order_result['long_symbol'], adjusted_remain_qty, adjusted_price)
+
                 max_taker_enter_order_time = self.config_manager.getfloat('TRADER', 'max_taker_enter_order_time')
                 start_time = time.time()
                 while time.time() - start_time < max_taker_enter_order_time:
@@ -365,7 +389,7 @@ class TakerTakerTrader(BaseTrader):
                             market=self.enter_order_result['long_exchange'].markets[self.enter_order_result['long_symbol']],
                             qty=remain_qty,
                             adjust_type='round')
-                        additional_long_order = await self.enter_order_result['long_exchange'].create_market_sell_order(
+                        additional_long_order = await self.enter_order_result['long_exchange'].create_market_buy_order(
                             self.enter_order_result['long_symbol'], adjusted_remain_qty)
                         self.append_long_short_order_result(long_order_result=additional_long_order,
                                                             short_order_result=None)
@@ -396,13 +420,13 @@ class TakerTakerTrader(BaseTrader):
         while time.time() - strat_time < max_exit_monitor_time:
             k += 1
             if k % int(print_interval/exit_monitor_interval) == 1:
-                current_spread = self.get_lastest_data()['spread_pct']
+                current_exit_spread = self.get_lastest_data()['opposite_spread_pct']
                 entry_spread = self.enter_order_monitor_result['info']['entry_spread_signed']
-                spread_change = current_spread - entry_spread
+                spread_change = current_exit_spread - entry_spread
                 elapsed_time = int(time.time() - strat_time)
 
                 print(f"📊 [{self.symbol}] EXIT MONITORING (T+{elapsed_time}s)")
-                print(f"   📈 Entry Spread: {entry_spread:+.3f}% | Current: {current_spread:+.3f}% | Change: {spread_change:+.3f}%")
+                print(f"   📈 Entry Spread: {entry_spread:+.3f}% | Current Exit Spread: {current_exit_spread:+.3f}% | Change: {spread_change:+.3f}%")
                 print(f"   🎯 Stop Loss: {-stop_loss_percent:.3f}% | Take Profit: {take_profit_percent:.3f}%")
             # spread_sign = self.enter_monitor_result['entry_spread_signed']/abs(self.enter_monitor_result['entry_spread_signed'])
             if not self.direction:
@@ -413,19 +437,19 @@ class TakerTakerTrader(BaseTrader):
                     self.append_exit_monitor_result(current_data, exit_type='wrong_entry')
                     return None
                 # current_data['spread_pct']: 부호 있음 / self.enter_order_monitor_result['info']['entry_spread']: 절대값
-                stop_loss_condition = current_data['spread_pct'] - self.enter_order_monitor_result['info']['entry_spread_signed'] <  -stop_loss_percent
-                take_profit_condition = (current_data['spread_pct'] - self.enter_order_result['entry_spread_signed'] > take_profit_percent) or (current_data['spread_pct'] >= 0)
+                stop_loss_condition = current_data['opposite_spread_pct'] - self.enter_order_monitor_result['info']['entry_spread_signed'] <  -stop_loss_percent
+                take_profit_condition = (current_data['opposite_spread_pct'] - self.enter_order_result['entry_spread_signed'] > take_profit_percent) or (current_data['opposite_spread_pct'] >= 0)
                 count_dict["stop_loss"].append(stop_loss_condition)
                 count_dict["take_profit"].append(take_profit_condition)
                 if all(count_dict["stop_loss"]):
                     self.status = "exit_order"
-                    spread_change = current_data['spread_pct'] - self.enter_order_monitor_result['info']['entry_spread_signed']
+                    spread_change = current_data['opposite_spread_pct'] - self.enter_order_monitor_result['info']['entry_spread_signed']
                     print(f"🛑 [{self.symbol}] STOP LOSS TRIGGERED - Spread change: {spread_change:+.3f}% (threshold: {-stop_loss_percent:.3f}%)")
                     self.append_exit_monitor_result(current_data, exit_type='stop_loss')
                     return None
                 elif all(count_dict["take_profit"]):
                     self.status = "exit_order"
-                    spread_change = current_data['spread_pct'] - self.enter_order_monitor_result['info']['entry_spread_signed']
+                    spread_change = current_data['opposite_spread_pct'] - self.enter_order_monitor_result['info']['entry_spread_signed']
                     print(f"💰 [{self.symbol}] TAKE PROFIT TRIGGERED - Spread change: {spread_change:+.3f}% (threshold: {take_profit_percent:.3f}%)")
                     self.append_exit_monitor_result(current_data, exit_type='take_profit')
                     return None
@@ -436,19 +460,19 @@ class TakerTakerTrader(BaseTrader):
                     print(f"❌ [{self.symbol}] WRONG ENTRY SPREAD - Expected positive, got {self.enter_order_monitor_result['info']['entry_spread_signed']:+.3f}%")
                     self.append_exit_monitor_result(current_data, exit_type='wrong_entry')
                     return None
-                stop_loss_condition = current_data['spread_pct'] - self.enter_order_monitor_result['info']['entry_spread_signed'] > stop_loss_percent
-                take_profit_condition = (current_data['spread_pct'] - self.enter_order_result['entry_spread_signed'] > take_profit_percent) or (current_data['spread_pct'] <= 0)
+                stop_loss_condition = current_data['opposite_spread_pct'] - self.enter_order_monitor_result['info']['entry_spread_signed'] > stop_loss_percent
+                take_profit_condition = (self.enter_order_result['entry_spread_signed'] - current_data['opposite_spread_pct'] > take_profit_percent) or (current_data['opposite_spread_pct'] <= 0)
                 count_dict["stop_loss"].append(stop_loss_condition)
                 count_dict["take_profit"].append(take_profit_condition)
                 if all(count_dict["stop_loss"]):
                     self.status = "exit_order"
-                    spread_change = current_data['spread_pct'] - self.enter_order_monitor_result['info']['entry_spread_signed']
+                    spread_change = current_data['opposite_spread_pct'] - self.enter_order_monitor_result['info']['entry_spread_signed']
                     print(f"🛑 [{self.symbol}] STOP LOSS TRIGGERED - Spread change: {spread_change:+.3f}% (threshold: {stop_loss_percent:.3f}%)")
                     self.append_exit_monitor_result(current_data, exit_type='stop_loss')
                     return None
                 elif all(count_dict["take_profit"]):
                     self.status = "exit_order"
-                    spread_change = current_data['spread_pct'] - self.enter_order_monitor_result['info']['entry_spread_signed']
+                    spread_change = current_data['opposite_spread_pct'] - self.enter_order_monitor_result['info']['entry_spread_signed']
                     print(f"💰 [{self.symbol}] TAKE PROFIT TRIGGERED - Spread change: {spread_change:+.3f}% (threshold: {take_profit_percent:.3f}%)")
                     self.append_exit_monitor_result(current_data, exit_type='take_profit')
                     return None
@@ -463,7 +487,7 @@ class TakerTakerTrader(BaseTrader):
     async def exit_order(self):
         # Todo: exit_type에 따라 바로 청산할지, 현재 spread를 확인하면서 할지 추가
         exit_type = self.exit_monitor_result.get('exit_type', 'unknown')
-        current_spread = self.get_lastest_data()['spread_pct']
+        current_spread = self.get_lastest_data()['opposite_spread_pct']
         print(f"🔄 [{self.symbol}] CLOSING POSITIONS - Reason: {exit_type.upper()} | Current spread: {current_spread:+.3f}%")
 
         lower_exchange = self.exit_monitor_result['long_exchange']
@@ -480,8 +504,8 @@ class TakerTakerTrader(BaseTrader):
         buy_taker_price_margin = self.config_manager.getfloat('TRADER', 'buy_taker_price_margin')
 
         current_data = self.get_lastest_data()
-        lower_price = current_data[f'{lower_exchange.id}_price']
-        higher_price = current_data[f'{higher_exchange.id}_price']
+        lower_price = current_data[f'{lower_exchange.id}_bid_price']
+        higher_price = current_data[f'{higher_exchange.id}_ask_price']
         sell_price = lower_price * sell_taker_price_margin
         buy_price = higher_price * buy_taker_price_margin
 
@@ -506,14 +530,12 @@ class TakerTakerTrader(BaseTrader):
             "short_qty": higher_qty,
             "short_price": higher_price,
             "short_order_id": short_order['id'],
-            "exit_spread": abs(current_data['spread_pct']),
-            "exit_spread_signed": current_data['spread_pct'],
+            "exit_spread": abs(current_data['opposite_spread_pct']),
+            "exit_spread_signed": current_data['opposite_spread_pct'],
             "timestamp": time.time()
         }
 
         self.status = "exit_order_monitor"
-
-        await asyncio.sleep(10)
 
     async def exit_order_monitor(self):
         print(f"Exit Order Monitoring {self.symbol} trader")
@@ -559,7 +581,7 @@ class TakerTakerTrader(BaseTrader):
             'exit_signal_spread': self.exit_order_result['exit_spread_signed'],
             'long_exit_price': long_result['average'],
             'short_exit_price': short_result['average'],
-            'exit_spread': 100 * (long_result['average'] - short_result['average']) / min(long_result['average'], short_result['average']),
+            'exit_spread': 100 * (short_result['average'] - long_result['average']) / min(long_result['average'], short_result['average']),
             'long_profit': long_profit,
             'short_profit': short_profit,
             'total_profit': long_profit + short_profit,
@@ -569,7 +591,6 @@ class TakerTakerTrader(BaseTrader):
             await f.write(json.dumps(trade_result, ensure_ascii=False) + '\n')
 
         self.status = 'end'
-        await asyncio.sleep(1)
 
     async def enter_position(self, symbol):
         if self.direction:
@@ -597,9 +618,9 @@ class TakerTakerTrader(BaseTrader):
             lastest_data = self.get_lastest_data()
 
             if self.direction:
-                higher_price, lower_price = lastest_data['binance_price'], lastest_data['bybit_price']
+                higher_price, lower_price = lastest_data['binance_bid_price'], lastest_data['bybit_ask_price']
             else:
-                higher_price, lower_price = lastest_data['bybit_price'], lastest_data['binance_price']
+                higher_price, lower_price = lastest_data['bybit_bid_price'], lastest_data['binance_ask_price']
 
             lower_qty = await self.calculate_qty_for_fixed_usdt(lower_exchange, lower_symbol, lower_price, self.target_usdt)
             higher_qty = await self.calculate_qty_for_fixed_usdt(higher_exchange, higher_symbol, higher_price, self.target_usdt)
@@ -635,7 +656,9 @@ class TakerTakerTrader(BaseTrader):
             print("=" * 60)
             print(f"🚀 진입 시도: {symbol}")
             print(f"롱: {lower_exchange.id} - {lower_qty} | 숏: {higher_exchange.id} - {higher_qty}")
-            print(f"가격: B={lastest_data['binance_price']}, Y={lastest_data['bybit_price']} | 스프레드={lastest_data['spread_pct']:+.2f}%")
+            print(f"Binance 가격: Ask {lastest_data['binance_ask_price']} | Bid {lastest_data['binance_bid_price']}")
+            print(f"Bybit   가격: Ask {lastest_data['bybit_ask_price']} | Bid {lastest_data['bybit_bid_price']}")
+            print(f"스프레드={lastest_data['spread_pct']:+.2f}%")
 
             bybit_params = {'category': 'linear'}
 
@@ -647,7 +670,6 @@ class TakerTakerTrader(BaseTrader):
             short_order_co = higher_exchange.create_limit_sell_order(higher_symbol, higher_qty, sell_price, params=short_params)
             long_order, short_order = await asyncio.gather(long_order_co, short_order_co)
 
-            # ✅ 체결 대기용으로 pending_orders에 저장
             self.enter_order_result = {
                 "long_exchange": lower_exchange,
                 "short_exchange": higher_exchange,
@@ -759,8 +781,8 @@ class TakerTakerTrader(BaseTrader):
             self.exit_monitor_result[f"{position_direction}_price"] = long_price_average if position_direction == 'long' else short_price_average
 
         self.exit_monitor_result |= {
-            "exit_spread": abs(current_data['spread_pct']),
-            "exit_spread_signed": current_data['spread_pct'],
+            "exit_spread": abs(current_data['opposite_spread_pct']),
+            "exit_spread_signed": current_data['opposite_spread_pct'],
             "exit_type": exit_type,
             "timestamp": time.time()
         }

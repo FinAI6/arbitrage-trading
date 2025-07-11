@@ -32,6 +32,9 @@ class AggregationManager:
         Args:
             interval (float): Interval in seconds between aggregation updates (optional, uses config if not provided)
         """
+
+        # Todo: asyncio Event를 정의하고 set과 wait, clear를 통해 polling 방식 -> Event Driven 방식으로 변경 -> 뒤에 Monitoring도
+
         if interval is None:
             interval = self.config_manager.getfloat('AGGREGATION', 'interval')
 
@@ -49,6 +52,7 @@ class AggregationManager:
         binance_data = self.binance_client.get_data()
         bybit_data = self.bybit_client.get_data()
 
+        # Todo: Orderbook 형태 Data Parsing -> Spread가 2개가 됨 (일단은 아무거나 한개로 진행?)
         # Find overlapping symbols
         binance_symbols = set(binance_data.keys())
         bybit_symbols = set(bybit_data.keys())
@@ -56,27 +60,49 @@ class AggregationManager:
 
         # Calculate spread for each common symbol
         for symbol in common_symbols:
-            binance_price = binance_data[symbol][0]
-            bybit_price = bybit_data[symbol][0]
-            binance_volume = binance_data[symbol][1]
-            bybit_volume = bybit_data[symbol][1]
+            binance_bid_price = binance_data[symbol][0]
+            binance_ask_price = binance_data[symbol][1]
+            binance_volume = binance_data[symbol][-1]
+            bybit_bid_price = bybit_data[symbol][0]
+            bybit_ask_price = bybit_data[symbol][1]
+            bybit_volume = bybit_data[symbol][-1]
+            # binance_price = binance_data[symbol][0]
+            # bybit_price = bybit_data[symbol][0]
+            # binance_volume = binance_data[symbol][1]
+            # bybit_volume = bybit_data[symbol][1]
 
             # Skip if either price is zero to avoid division by zero
-            if binance_price <= 0 or bybit_price <= 0:
+            if binance_bid_price <= 0 or binance_ask_price <= 0 or bybit_bid_price <= 0 or bybit_ask_price <= 0:
                 continue
 
-            # Calculate spread percentage
-            min_price = min(binance_price, bybit_price)
-            spread_pct = (binance_price - bybit_price) / min_price * 100
-            if spread_pct >= self.arb_threshold:
-                positive_spread = True
-                negative_spread = False
-            elif spread_pct <= -self.arb_threshold:
-                positive_spread = False
-                negative_spread = True
+            # Calculate positive(Binance(short 예정) > Bybit(long 예정)) spread percent
+            positive_min_price = min(binance_bid_price, bybit_ask_price)
+            positive_spread_pct = (binance_bid_price - bybit_ask_price) / positive_min_price * 100
+            if positive_spread_pct >= self.arb_threshold:
+                positive_spread_check = True
             else:
-                positive_spread = False
-                negative_spread = False
+                positive_spread_check = False
+
+            # Calculate negative(Binance(long 예정) < Bybit(short 예정)) spread percent
+            negative_min_price = min(binance_ask_price, bybit_bid_price)
+            negative_spread_pct = (binance_ask_price - bybit_bid_price) / negative_min_price * 100
+            if negative_spread_pct <= -self.arb_threshold:
+                negative_spread_check = True
+            else:
+                negative_spread_check = False
+
+            # # Calculate spread percentage
+            # min_price = min(binance_price, bybit_price)
+            # spread_pct = (binance_price - bybit_price) / min_price * 100
+            # if spread_pct >= self.arb_threshold:
+            #     positive_spread = True
+            #     negative_spread = False
+            # elif spread_pct <= -self.arb_threshold:
+            #     positive_spread = False
+            #     negative_spread = True
+            # else:
+            #     positive_spread = False
+            #     negative_spread = False
 
             # Initialize deque if this is a new symbol
             if symbol not in self.spread_data:
@@ -85,13 +111,16 @@ class AggregationManager:
             # Add spread data to the deque
             self.spread_data[symbol].append({
                 'timestamp': asyncio.get_event_loop().time(),
-                'binance_price': binance_price,
-                'bybit_price': bybit_price,
+                'binance_bid_price': binance_bid_price,
+                'binance_ask_price': binance_ask_price,
+                'bybit_bid_price': bybit_bid_price,
+                'bybit_ask_price': bybit_ask_price,
                 'binance_volume': binance_volume,
                 'bybit_volume': bybit_volume,
-                'spread_pct': spread_pct,
-                'positive_spread': positive_spread,
-                'negative_spread': negative_spread,
+                'positive_spread_pct': positive_spread_pct,
+                'negative_spread_pct': negative_spread_pct,
+                'positive_spread_check': positive_spread_check,
+                'negative_spread_check': negative_spread_check,
             })
 
     def get_spread_data(self):
@@ -113,7 +142,8 @@ class AggregationManager:
         latest_spreads = {}
         for symbol, data_deque in self.spread_data.items():
             if data_deque:  # Check if deque is not empty
-                latest_spreads[symbol] = data_deque[-1]['spread_pct']
+                latest_spreads[symbol] = {"positive_spread": data_deque[-1]['positive_spread_pct'],
+                                          "negative_spread": data_deque[-1]['negative_spread_pct'],}
         return latest_spreads
 
     def get_lastest_spread_by_symbol(self, symbol):

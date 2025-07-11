@@ -96,23 +96,39 @@ class BaseTrader(ABC):
             print(f"리소스 정리 중 오류: {e}")
 
     def get_lastest_data(self):
-        return self.aggregation_manager.get_lastest_spread_by_symbol(self.symbol)
+        data = self.aggregation_manager.get_lastest_spread_by_symbol(self.symbol)
+        if self.direction:
+            data['spread_pct'] = data['positive_spread_pct']
+            data['opposite_spread_pct'] = data['negative_spread_pct']
+        else:
+            data['spread_pct'] = data['negative_spread_pct']
+            data['opposite_spread_pct'] = data['positive_spread_pct']
+        return data
 
     def calculate_spread_percent(self):
         data = self.aggregation_manager.get_lastest_spread_by_symbol(self.symbol)
-        return (data['binance_price'] - data['bybit_price'])/min(data['binance_price'], data['bybit_price']) * 100
+        if self.direction:
+            return data['positive_spread_pct']
+        else:
+            return data['negative_spread_pct']
 
     def check_valid_spread(self):
         threshold = self.config_manager.getfloat('AGGREGATION', 'arb_threshold')
         spread_percent = self.calculate_spread_percent()
-        if abs(spread_percent) >= abs(threshold):
-            if (spread_percent > 0) and self.direction:
-                return True
-            elif (spread_percent < 0) and not self.direction:
-                return True
-            return False
+
+        if self.direction:
+            return spread_percent >= threshold
         else:
-            return False
+            return spread_percent <= -threshold
+        #
+        # if abs(spread_percent) >= abs(threshold):
+        #     if (spread_percent > 0) and self.direction:
+        #         return True
+        #     elif (spread_percent < 0) and not self.direction:
+        #         return True
+        #     return False
+        # else:
+        #     return False
 
     async def convert_symbol(self, exchange, raw_symbol):
         try:

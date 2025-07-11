@@ -5,6 +5,8 @@ import argparse
 from datetime import datetime
 from exchange.binance_websocket import BinanceWebsocket
 from exchange.bybit_websocket import BybitWebsocket
+from exchange.binance_orderbook_websocket import BinanceOrderbookWebsocket
+from exchange.bybit_orderbook_websocket import BybitOrderbookWebsocket
 from aggregation_manager import AggregationManager
 from trading_manager import TradingManager
 from monitoring_manager import MonitoringManager
@@ -85,8 +87,8 @@ async def display_spreads(aggregation_manager, trading_manager, interval):
 async def main(test_duration_override=None, display_interval_override=None):
     # Initialize WebSocket clients with no predefined symbols
     # They will fetch all available symbols from the exchanges
-    binance_client = BinanceWebsocket()
-    bybit_client = BybitWebsocket()
+    binance_client = BinanceOrderbookWebsocket()
+    bybit_client = BybitOrderbookWebsocket()
 
     config_manager = ConfigManager()
 
