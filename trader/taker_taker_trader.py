@@ -581,7 +581,7 @@ class TakerTakerTrader(BaseTrader):
             'exit_signal_spread': self.exit_order_result['exit_spread_signed'],
             'long_exit_price': long_result['average'],
             'short_exit_price': short_result['average'],
-            'exit_spread': 100 * (long_result['average'] - short_result['average']) / min(long_result['average'], short_result['average']),
+            'exit_spread': 100 * (short_result['average'] - long_result['average']) / min(long_result['average'], short_result['average']),
             'long_profit': long_profit,
             'short_profit': short_profit,
             'total_profit': long_profit + short_profit,
