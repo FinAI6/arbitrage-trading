@@ -11,6 +11,7 @@ from aggregation_manager import AggregationManager
 from trading_manager import TradingManager
 from monitoring_manager import MonitoringManager
 from config_manager import ConfigManager
+from api_manager import ApiManager
 
 
 # No need to specify symbols, they will be fetched dynamically from the exchanges
@@ -102,8 +103,10 @@ async def main(test_duration_override=None, display_interval_override=None):
         bybit_client=bybit_client
     )
 
+    api_manager = ApiManager()
+
     # Initialize trading and monitoring managers
-    trading_manager = TradingManager(aggregation_manager=aggregation_manager)
+    trading_manager = TradingManager(aggregation_manager=aggregation_manager, api_manager=api_manager)
     monitoring_manager = MonitoringManager(aggregation_manager=aggregation_manager, trading_manager=trading_manager)
 
     # Set up signal handlers for graceful shutdown
@@ -114,7 +117,7 @@ async def main(test_duration_override=None, display_interval_override=None):
         for sig in (signal.SIGINT, signal.SIGTERM):
             try:
                 loop.add_signal_handler(sig, lambda: asyncio.create_task(shutdown(
-                    binance_client, bybit_client, aggregation_manager, trading_manager, monitoring_manager)))
+                    binance_client, bybit_client, aggregation_manager, trading_manager, monitoring_manager, api_manager)))
             except NotImplementedError:
                 # On Windows, we'll rely on KeyboardInterrupt exception instead
                 pass
@@ -127,6 +130,7 @@ async def main(test_duration_override=None, display_interval_override=None):
         asyncio.create_task(bybit_client.connect()),
         asyncio.create_task(aggregation_manager.start()),
         asyncio.create_task(monitoring_manager.start()),
+        asyncio.create_task(api_manager.start()),
         # asyncio.create_task(display_spreads(aggregation_manager, trading_manager, display_interval))
     ]
     # tasks = [
@@ -147,7 +151,7 @@ async def main(test_duration_override=None, display_interval_override=None):
         # Run indefinitely until interrupted
         await asyncio.gather(*tasks)
 
-async def shutdown(binance_client, bybit_client, aggregation_manager, trading_manager=None, monitoring_manager=None):
+async def shutdown(binance_client, bybit_client, aggregation_manager, trading_manager=None, monitoring_manager=None, api_manager=None, *args, **kwargs):
     """
     Gracefully shut down all components
     """
@@ -161,6 +165,7 @@ async def shutdown(binance_client, bybit_client, aggregation_manager, trading_ma
     await aggregation_manager.stop()
     await binance_client.stop()
     await bybit_client.stop()
+    await api_manager.stop()
 
     # Cancel all tasks except the current one
     tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]

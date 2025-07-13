@@ -21,28 +21,30 @@ def status_decorator(state):
     return decorator
 
 class BaseTrader(ABC):
-    def __init__(self, symbol: str, direction: bool, aggregation_manager: AggregationManager):
+    def __init__(self, symbol: str, direction: bool, aggregation_manager: AggregationManager, api_pair: tuple):
         self.symbol = symbol
         self.direction = direction
         self.aggregation_manager = aggregation_manager
         self.config_manager = ConfigManager()
+        self.binance, self.bybit = api_pair
+
         self.target_usdt = self.config_manager.getfloat('TRADING', 'target_usdt')
 
-        self.binance = ccxt.binance({
-            'apiKey': self.config_manager.get('EXCHANGE', 'binance_api_key'),
-            'secret': self.config_manager.get('EXCHANGE', 'binance_api_secret'),
-            'options': {'defaultType': 'future',
-                        'adjustForTimeDifference': True},
-            'enableRateLimit': True
-        })
-
-        self.bybit = ccxt.bybit({
-            'apiKey': self.config_manager.get('EXCHANGE', 'bybit_api_key'),
-            'secret': self.config_manager.get('EXCHANGE', 'bybit_api_secret'),
-            'options': {'defaultType': 'future',
-                        'adjustForTimeDifference': True},
-            'enableRateLimit': True
-        })
+        # self.binance = ccxt.binance({
+        #     'apiKey': self.config_manager.get('EXCHANGE', 'binance_api_key'),
+        #     'secret': self.config_manager.get('EXCHANGE', 'binance_api_secret'),
+        #     'options': {'defaultType': 'future',
+        #                 'adjustForTimeDifference': True},
+        #     'enableRateLimit': False
+        # })
+        #
+        # self.bybit = ccxt.bybit({
+        #     'apiKey': self.config_manager.get('EXCHANGE', 'bybit_api_key'),
+        #     'secret': self.config_manager.get('EXCHANGE', 'bybit_api_secret'),
+        #     'options': {'defaultType': 'future',
+        #                 'adjustForTimeDifference': True},
+        #     'enableRateLimit': False
+        # })
 
         self.enter_order_result: dict | None = {}
         self.enter_order_monitor_result: dict | None = {'info': {},
