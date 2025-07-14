@@ -222,7 +222,7 @@ class ApiManager:
 
         await self._load_markets_for_pair(self.update_only_api)
         for i in range(2):
-            self.shared_markets[i] = self.update_only_api[i].market.copy()
+            self.shared_markets[i] = self.update_only_api[i].markets.copy()
 
         # # 락으로 보호하여 모든 API 쌍 가져오기
         # temp_pairs = []

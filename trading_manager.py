@@ -32,9 +32,6 @@ class TradingManager:
         if self.full() or symbol in self.tasks:  # 꽉차면 거절
             return False
 
-        async with aiofiles.open('./result.txt', mode='a+') as f:
-            await f.write(f"[Append Trader][{symbol}][{datetime.now()}]")
-
         # Load Market 된 API 가져오기
         api_pair = await self.api_manager.get_api_pair()
 
