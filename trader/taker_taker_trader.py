@@ -608,11 +608,19 @@ class TakerTakerTrader(BaseTrader):
             return False
 
         try:
-            await asyncio.gather(self.safe_set_margin_mode(lower_exchange, lower_symbol, 'isolated'),
-                                 self.safe_set_margin_mode(higher_exchange, higher_symbol, 'isolated'))
+            check_lower_success, check_higher_success = await asyncio.gather(self.safe_set_margin_mode(lower_exchange, lower_symbol, 'isolated'),
+                                                                             self.safe_set_margin_mode(higher_exchange, higher_symbol, 'isolated'))
 
-            await asyncio.gather(self.safe_set_leverage(lower_exchange, lower_symbol, 1),
-                                 self.safe_set_leverage(higher_exchange, higher_symbol, 1))
+            if not check_lower_success or not check_higher_success:
+                print("Something went wrong while setting margin mode")
+                return False
+
+            check_lower_success, check_higher_success = await asyncio.gather(self.safe_set_leverage(lower_exchange, lower_symbol, 1),
+                                                                             self.safe_set_leverage(higher_exchange, higher_symbol, 1))
+
+            if not check_lower_success or not check_higher_success:
+                print("Something went wrong while setting leverage")
+                return False
 
             print(datetime.now())
             lastest_data = self.get_lastest_data()

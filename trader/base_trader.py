@@ -1,3 +1,4 @@
+import asyncio
 from abc import ABC, abstractmethod
 from functools import wraps
 import json
@@ -247,28 +248,39 @@ class BaseTrader(ABC):
         try:
             if exchange.id == 'binance':
                 try:
-                    await exchange.set_margin_mode(margin_mode, symbol)
+                    print(f"{exchange.id} 마진 모드 설정 시작: {margin_mode}")
+                    await asyncio.wait_for(exchange.set_margin_mode(margin_mode, symbol), timeout=30)
                     print(f"{exchange.id} 마진 모드 설정 완료: {margin_mode}")
                 except Exception as e:
                     print(f"Binance Set Margin Mode Exception: {e}")
+                    return False
             elif exchange.id == 'bybit':
                 try:
-                    await exchange.set_margin_mode(margin_mode, symbol, params={'category': 'linear'})
+                    print(f"{exchange.id} 마진 모드 설정 시작: {margin_mode}")
+                    await asyncio.wait_for(await exchange.set_margin_mode(margin_mode, symbol, params={'category': 'linear'}), timeout=30)
                     print(f"{exchange.id} 마진 모드 설정 완료: {margin_mode}")
                 except Exception as e:
                     print(f"Bybit Set Margin Mode Exception: {e}")
-                return
+                    return False
+            return True
         except Exception as e:
             print(f"❌ 마진 모드 설정 중 오류 ({exchange.id}, {symbol}): {e}")
+            return False
 
     async def safe_set_leverage(self, exchange, symbol, leverage):
         try:
             if exchange.id == 'binance':
-                await exchange.set_leverage(leverage, symbol, params={'category': 'linear'})
-                print(f"{exchange.id} 레버리지 설정 완료: {leverage}")
+                try:
+                    print(f"{exchange.id} 레버리지 설정 시작: {leverage}")
+                    await asyncio.wait_for(exchange.set_leverage(leverage, symbol, params={'category': 'linear'}), timeout=30)
+                    print(f"{exchange.id} 레버리지 설정 완료: {leverage}")
+                except Exception as e:
+                    print(f"Binance Set Leverage Exception: {e}")
+                    return False
             elif exchange.id == 'bybit':
                 try:
-                    await exchange.set_leverage(leverage, symbol, params={'category': 'linear'})
+                    print(f"{exchange.id} 레버리지 설정 시작: {leverage}")
+                    await asyncio.wait_for(exchange.set_leverage(leverage, symbol, params={'category': 'linear'}), timeout=30)
                     print(f"{exchange.id} 레버리지 설정 완료: {leverage}")
                 except Exception as e:
                     error_data = json.loads(e.args[0][e.args[0].find("{"):])
@@ -277,9 +289,11 @@ class BaseTrader(ABC):
                         print(f"⚠️ 레버리지 이미 {leverage}배 설정됨 → 변경 생략 ({exchange.id}, {symbol})")
                     else:
                         print(f"❌ 레버리지 설정 중 오류 ({exchange.id}, {symbol}): {e}")
-                return
+                        return False
+            return True
         except Exception as e:
             print(f"❌ 레버리지 설정 중 오류 ({exchange.id}, {symbol}): {e}")
+            return False
 
     async def safe_cancel_order(self, exchange, symbol, order_id) -> None | dict:
         '''
