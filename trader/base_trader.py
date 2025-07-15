@@ -257,7 +257,7 @@ class BaseTrader(ABC):
             elif exchange.id == 'bybit':
                 try:
                     print(f"{exchange.id} 마진 모드 설정 시작: {margin_mode}")
-                    await asyncio.wait_for(await exchange.set_margin_mode(margin_mode, symbol, params={'category': 'linear'}), timeout=30)
+                    await asyncio.wait_for(exchange.set_margin_mode(margin_mode, symbol, params={'category': 'linear'}), timeout=30)
                     print(f"{exchange.id} 마진 모드 설정 완료: {margin_mode}")
                 except Exception as e:
                     print(f"Bybit Set Margin Mode Exception: {e}")
