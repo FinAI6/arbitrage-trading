@@ -52,7 +52,7 @@ class TradingManager:
             print(f"✅ [Trading Manager] Completed trading {symbol} | Active trades: {len(self.tasks)}/{self.max_symbols}")
             if len(self.tasks) > 0:
                 print(f"📊 [Trading Manager] Remaining symbols: {list(self.tasks.keys())}")
-            self.api_manager.return_api_pair(api_pair=api_pair)
+            asyncio.create_task(self.api_manager.return_api_pair(api_pair=api_pair))
 
         task.add_done_callback(on_task_done)
 
