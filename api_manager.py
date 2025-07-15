@@ -24,7 +24,7 @@ class ApiManager:
 
         # Load Market Update deque
         self.update_only_api = None
-        self.shared_markets: list | None = None
+        self.shared_markets: list = [None, None]
 
         # API 설정 정보
         self.binance_config = {
@@ -104,6 +104,10 @@ class ApiManager:
             self.update_only_api = self._create_api_pair()
             await self._load_markets_for_pair(self.update_only_api)
 
+            # shared_markets 초기화 추가
+            for i in range(2):
+                self.shared_markets[i] = self.update_only_api[i].markets.copy()
+
             self._initialized = True
             self._running = True
 
@@ -111,6 +115,9 @@ class ApiManager:
             print(f"❌ Background initialization failed: {e}")
 
     async def start(self):
+        # 초기화 완료 대기
+        await self.wait_for_initialization()
+
         # 주기적 load_markets 작업 시작
         self._load_markets_task = asyncio.create_task(self._periodic_load_markets())
         print(f"🔄 Started periodic load_markets task (interval: {self._load_markets_interval}s)")
@@ -124,6 +131,7 @@ class ApiManager:
                 await self._load_markets_for_pair(self.update_only_api)
                 for i in range(2):
                     self.shared_markets[i] = self.update_only_api[i].markets.copy()
+                print(f"Shared Markets: {self.shared_markets[0].keys()}")
 
                 # # Todo: Update 주기를 어떻게 할건지? 한번에 다? 일정 간격으로?
                 # for _ in range(len(self.update_only_api_deque)):

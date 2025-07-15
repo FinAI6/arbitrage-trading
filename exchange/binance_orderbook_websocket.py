@@ -140,9 +140,9 @@ class BinanceOrderbookWebsocket:
                 # WebSocket connection with timeout settings
                 async with websockets.connect(
                     connection_url,
-                    ping_interval=20,  # Send ping every 20 seconds
-                    ping_timeout=10,   # Wait 10 seconds for ping response
-                    close_timeout=10   # Wait 10 seconds for connection close
+                    ping_interval=None,  # Send ping every 20 seconds
+                    ping_timeout=None,   # Wait 10 seconds for ping response
+                    close_timeout=15   # Wait 10 seconds for connection close
                 ) as websocket:
                     print(f"Connected to Binance OrderBook WebSocket for {len(symbols)} symbols")
 
