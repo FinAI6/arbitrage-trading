@@ -39,7 +39,7 @@ class TradingManager:
             print(f"[Trading Manager] API Manager is not available.")
             return False
 
-        trader = TakerTakerTrader(symbol=symbol, direction=direction, aggregation_manager=self.aggregation_manager, api_pair=api_pair)
+        trader = TakerTakerTrader(symbol=symbol, direction=direction, aggregation_manager=self.aggregation_manager, api_manager=self.api_manager, api_pair=api_pair)
         task = asyncio.create_task(trader.run(), name=symbol)
         self.tasks[symbol] = task
 

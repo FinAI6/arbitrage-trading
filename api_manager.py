@@ -26,6 +26,9 @@ class ApiManager:
         self.update_only_api = None
         self.shared_markets: list = [None, None]
 
+        # Set Leverage, Margin Mode List
+        self.leverage_margin_done_list: list = []
+
         # API 설정 정보
         self.binance_config = {
             'apiKey': self.binance_api_key,
@@ -249,6 +252,15 @@ class ApiManager:
         #     self.api_deque.extend(refreshed_pairs)
 
         print(f"✅ Force load_markets completed")
+
+    def add_leverage_margin_done_list(self, symbol: str):
+        self.leverage_margin_done_list.append(symbol)
+
+    def check_leverage_margin_done_list(self, symbol: str) -> bool:
+        if symbol in self.leverage_margin_done_list:
+            return True
+        else:
+            return False
 
     async def stop(self):
         """모든 API 인스턴스 종료 및 정리"""

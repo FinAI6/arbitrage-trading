@@ -4,6 +4,7 @@ from functools import wraps
 import json
 import math
 from aggregation_manager import AggregationManager
+from api_manager import ApiManager
 from config_manager import ConfigManager
 import ccxt.pro as ccxt
 
@@ -22,10 +23,11 @@ def status_decorator(state):
     return decorator
 
 class BaseTrader(ABC):
-    def __init__(self, symbol: str, direction: bool, aggregation_manager: AggregationManager, api_pair: tuple):
+    def __init__(self, symbol: str, direction: bool, aggregation_manager: AggregationManager, api_manager: ApiManager, api_pair: tuple[ccxt.Exchange, ccxt.Exchange]):
         self.symbol = symbol
         self.direction = direction
         self.aggregation_manager = aggregation_manager
+        self.api_manager = api_manager
         self.config_manager = ConfigManager()
         self.binance, self.bybit = api_pair
 

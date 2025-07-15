@@ -608,19 +608,24 @@ class TakerTakerTrader(BaseTrader):
             return False
 
         try:
-            check_lower_success, check_higher_success = await asyncio.gather(self.safe_set_margin_mode(lower_exchange, lower_symbol, 'isolated'),
-                                                                             self.safe_set_margin_mode(higher_exchange, higher_symbol, 'isolated'))
+            # Leverage와 Margin Mode 설정을 이미 했던 이력이 있으면 Skip
+            if not self.api_manager.check_leverage_margin_done_list(self.symbol):
 
-            if not check_lower_success or not check_higher_success:
-                print("Something went wrong while setting margin mode")
-                return False
+                check_lower_success, check_higher_success = await asyncio.gather(self.safe_set_margin_mode(lower_exchange, lower_symbol, 'isolated'),
+                                                                                 self.safe_set_margin_mode(higher_exchange, higher_symbol, 'isolated'))
 
-            check_lower_success, check_higher_success = await asyncio.gather(self.safe_set_leverage(lower_exchange, lower_symbol, 1),
-                                                                             self.safe_set_leverage(higher_exchange, higher_symbol, 1))
+                if not check_lower_success or not check_higher_success:
+                    print("Something went wrong while setting margin mode")
+                    return False
 
-            if not check_lower_success or not check_higher_success:
-                print("Something went wrong while setting leverage")
-                return False
+                check_lower_success, check_higher_success = await asyncio.gather(self.safe_set_leverage(lower_exchange, lower_symbol, 1),
+                                                                                 self.safe_set_leverage(higher_exchange, higher_symbol, 1))
+
+                if not check_lower_success or not check_higher_success:
+                    print("Something went wrong while setting leverage")
+                    return False
+
+                self.api_manager.add_leverage_margin_done_list(self.symbol)
 
             print(datetime.now())
             lastest_data = self.get_lastest_data()
