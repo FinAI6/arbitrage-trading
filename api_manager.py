@@ -77,7 +77,7 @@ class ApiManager:
                 binance_api.load_markets(),
                 bybit_api.load_markets()
             )
-            print(f"✅ Markets loaded for API pair")
+            # print(f"✅ Markets loaded for API pair")
         except Exception as e:
             print(f"❌ Failed to load markets for API pair: {e}")
 
