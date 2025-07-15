@@ -28,6 +28,17 @@ class BaseTrader(ABC):
         self.config_manager = ConfigManager()
         self.binance, self.bybit = api_pair
 
+        base_currency = 'USDT'
+        symbol_formatted = symbol.split(base_currency)[0] + "/" + base_currency + f":{base_currency}"
+        if symbol_formatted not in self.binance.markets.keys():
+            print(f"{symbol_formatted} not found in Binance markets. Skipping.")
+            self.status = "end"
+            return
+        elif symbol_formatted not in self.bybit.markets.keys():
+            print(f"{symbol_formatted} not found in Bybit markets. Skipping.")
+            self.status = "end"
+            return
+
         self.target_usdt = self.config_manager.getfloat('TRADING', 'target_usdt')
 
         # self.binance = ccxt.binance({
@@ -61,10 +72,6 @@ class BaseTrader(ABC):
 
     @status_decorator("initialize")
     async def initialize(self):
-        # await self.binance.load_markets()
-        # print("Finish loading Binance markets.")
-        # await self.bybit.load_markets()
-        # print("Finish loading Bybit markets.")
         self.status = "enter_order"
 
     @abstractmethod
@@ -134,7 +141,6 @@ class BaseTrader(ABC):
 
     async def convert_symbol(self, exchange, raw_symbol):
         try:
-            await exchange.load_markets()
             formatted = raw_symbol.replace("/", "").upper()
             for market_id, market in exchange.markets.items():
                 plain_id = market['id'].replace("/", "").upper()
@@ -155,7 +161,6 @@ class BaseTrader(ABC):
         return None
 
     async def calculate_qty_for_fixed_usdt(self, exchange, symbol, price, target_usdt):
-        await exchange.load_markets()
         market = exchange.market(symbol)
 
         qty = target_usdt / price
