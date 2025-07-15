@@ -123,7 +123,7 @@ class ApiManager:
 
                 await self._load_markets_for_pair(self.update_only_api)
                 for i in range(2):
-                    self.shared_markets[i] = self.update_only_api[i].market.copy()
+                    self.shared_markets[i] = self.update_only_api[i].markets.copy()
 
                 # # Todo: Update 주기를 어떻게 할건지? 한번에 다? 일정 간격으로?
                 # for _ in range(len(self.update_only_api_deque)):
