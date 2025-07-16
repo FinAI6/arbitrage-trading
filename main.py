@@ -6,7 +6,7 @@ from datetime import datetime
 from exchange.binance_websocket import BinanceWebsocket
 from exchange.bybit_websocket import BybitWebsocket
 from exchange.binance_orderbook_websocket import BinanceOrderbookWebsocket
-from exchange.bybit_orderbook_websocket import BybitOrderbookWebsocket
+from exchange.bybit_multi_connection_websocket import BybitMultiConnectionWebsocket
 from aggregation_manager import AggregationManager
 from trading_manager import TradingManager
 from monitoring_manager import MonitoringManager
@@ -89,7 +89,7 @@ async def display_spreads(aggregation_manager, trading_manager, interval):
 async def main(test_duration_override=None, display_interval_override=None):
 
     binance_client = BinanceOrderbookWebsocket()
-    bybit_client = BybitOrderbookWebsocket()
+    bybit_client = BybitMultiConnectionWebsocket()
     await set_common_symbol(binance_client, bybit_client)
 
     config_manager = ConfigManager()

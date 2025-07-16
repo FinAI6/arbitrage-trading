@@ -5,6 +5,7 @@ import logging
 from datetime import datetime
 from aggregation_manager import AggregationManager
 from exchange.binance_orderbook_websocket import BinanceOrderbookWebsocket
+from exchange.bybit_multi_connection_websocket import BybitMultiConnectionWebsocket
 from exchange.bybit_orderbook_websocket import BybitOrderbookWebsocket
 
 # Configure logging for CSV format
@@ -88,6 +89,14 @@ class BybitOrderbookWebsocketWithTimestamp(BybitOrderbookWebsocket):
         """Get data with timestamps"""
         return self.data, self.timestamps
 
+class BybitMultiConnectionWebsocketWithTimestamp(BybitMultiConnectionWebsocket):
+    def __init__(self, symbols=None, test_duration=None):
+        super().__init__(symbols, test_duration)
+
+    def get_data_with_timestamp(self):
+        data = self.get_data()
+        return {key: value[:5] for key, value in data.items()}, {key: value[-1] for key, value in data.items()}
+
 class AggregationManagerWithLogging(AggregationManager):
     """Extended AggregationManager that logs orderbook data"""
 
@@ -166,6 +175,7 @@ async def test_orderbook_websocket_logging(test_duration=60):
         # symbols=target_symbols,
         test_duration=test_duration
     )
+    bybit_client = BybitMultiConnectionWebsocketWithTimestamp()
 
     # Initialize aggregation manager
     aggregation_manager = AggregationManagerWithLogging(binance_client, bybit_client)
