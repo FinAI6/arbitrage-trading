@@ -299,8 +299,10 @@ class BybitOrderbookWebsocket:
                             # 실시간 오더북 데이터와 저장된 볼륨 데이터 결합
                             volume_usdt_24h = self.volume_data.get(symbol, 0)
 
+                            ws_timestamp = data.get('ts')
+
                             # Store as (bid_price, ask_price, bid_qty, ask_qty, volume_24h)
-                            self.data[symbol] = (bid_price, ask_price, bid_qty, ask_qty, volume_usdt_24h)
+                            self.data[symbol] = (bid_price, ask_price, bid_qty, ask_qty, volume_usdt_24h, ws_timestamp)
 
                             # Optional: Print sample data for debugging
                             # if symbol == 'CHILLGUYUSDT':

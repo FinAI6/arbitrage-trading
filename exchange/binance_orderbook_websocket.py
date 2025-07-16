@@ -226,10 +226,12 @@ class BinanceOrderbookWebsocket:
             bid_qty = float(data['B'])      # Best bid quantity
             ask_qty = float(data['A'])      # Best ask quantity
 
+            ws_timestamp = data.get('E')
+
             # Store as (bid_price, ask_price, bid_qty, ask_qty)
             # Binance 24h Volume = 0
             # self.data[symbol] = (bid_price, ask_price, bid_qty, ask_qty, 0)
-            self.data[symbol] = (bid_price, ask_price, bid_qty, ask_qty, 0)
+            self.data[symbol] = (bid_price, ask_price, bid_qty, ask_qty, 0, ws_timestamp)
             
             # Optional: Print sample data for debugging
             # if symbol == "CHILLGUYUSDT":

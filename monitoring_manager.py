@@ -117,6 +117,18 @@ class MonitoringManager:
         # Send to Trading Manager if we have any symbols
         if top_symbols:
             for i, (symbol, data) in enumerate(top_symbols):
+
+                # Websocket Data가 Update 안되는 상황 확인
+                time_diff_threshold = 10
+
+                current_datetime = datetime.now()
+                binance_datetime = datetime.fromtimestamp(data['data'][-1]['binance_timestamp'] / 1000)
+                bybit_datetime = datetime.fromtimestamp(data['data'][-1]['bybit_timestamp'] / 1000)
+
+                if abs((current_datetime - binance_datetime).total_seconds()) > time_diff_threshold or abs((current_datetime - bybit_datetime).total_seconds()) > time_diff_threshold:
+                    print(f"Timestamp too old - Current: {current_datetime}, Binance: {binance_datetime}, Bybit: {bybit_datetime}")
+                    continue
+
                 success = await self.trading_manager.add_symbol(symbol, data['direction'] == 'positive')
                 if success:
                     print(f"\n🔍 [Monitoring Manager] Found {len(top_symbols)} trading opportunities:")

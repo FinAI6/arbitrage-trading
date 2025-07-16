@@ -52,7 +52,6 @@ class AggregationManager:
         binance_data = self.binance_client.get_data()
         bybit_data = self.bybit_client.get_data()
 
-        # Todo: Orderbook 형태 Data Parsing -> Spread가 2개가 됨 (일단은 아무거나 한개로 진행?)
         # Find overlapping symbols
         binance_symbols = set(binance_data.keys())
         bybit_symbols = set(bybit_data.keys())
@@ -62,10 +61,10 @@ class AggregationManager:
         for symbol in common_symbols:
             binance_bid_price = binance_data[symbol][0]
             binance_ask_price = binance_data[symbol][1]
-            binance_volume = binance_data[symbol][-1]
+            binance_volume = binance_data[symbol][-2]
             bybit_bid_price = bybit_data[symbol][0]
             bybit_ask_price = bybit_data[symbol][1]
-            bybit_volume = bybit_data[symbol][-1]
+            bybit_volume = bybit_data[symbol][-2]
             # binance_price = binance_data[symbol][0]
             # bybit_price = bybit_data[symbol][0]
             # binance_volume = binance_data[symbol][1]
@@ -91,26 +90,16 @@ class AggregationManager:
             else:
                 negative_spread_check = False
 
-            # # Calculate spread percentage
-            # min_price = min(binance_price, bybit_price)
-            # spread_pct = (binance_price - bybit_price) / min_price * 100
-            # if spread_pct >= self.arb_threshold:
-            #     positive_spread = True
-            #     negative_spread = False
-            # elif spread_pct <= -self.arb_threshold:
-            #     positive_spread = False
-            #     negative_spread = True
-            # else:
-            #     positive_spread = False
-            #     negative_spread = False
-
             # Initialize deque if this is a new symbol
             if symbol not in self.spread_data:
                 self.spread_data[symbol] = deque(maxlen=self.max_deque_length)
 
             # Add spread data to the deque
             self.spread_data[symbol].append({
-                'timestamp': asyncio.get_event_loop().time(),
+                'duration': asyncio.get_event_loop().time(),
+                'timestamp': datetime.now(),
+                'binance_timestamp': binance_data[symbol][-1],
+                'bybit_timestamp': bybit_data[symbol][-1],
                 'binance_bid_price': binance_bid_price,
                 'binance_ask_price': binance_ask_price,
                 'bybit_bid_price': bybit_bid_price,
@@ -142,7 +131,9 @@ class AggregationManager:
         latest_spreads = {}
         for symbol, data_deque in self.spread_data.items():
             if data_deque:  # Check if deque is not empty
-                latest_spreads[symbol] = {"positive_spread": data_deque[-1]['positive_spread_pct'],
+                latest_spreads[symbol] = {"binance_timestamp": data_deque[-1]['binance_timestamp'],
+                                          "bybit_timestamp": data_deque[-1]['bybit_timestamp'],
+                                          "positive_spread": data_deque[-1]['positive_spread_pct'],
                                           "negative_spread": data_deque[-1]['negative_spread_pct'],}
         return latest_spreads
 
