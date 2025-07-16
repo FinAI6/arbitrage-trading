@@ -46,7 +46,7 @@ class BinanceOrderbookWebsocketWithTimestamp(BinanceOrderbookWebsocket):
         if 's' in data and 'b' in data and 'a' in data:
             symbol = data['s'].upper()
             # Extract timestamp if available (E field is event time in milliseconds)
-            ws_timestamp = data.get('E', int(time.time() * 1000))
+            ws_timestamp = data.get('E')
             self.timestamps[symbol] = ws_timestamp
 
     def get_data_with_timestamp(self):
@@ -81,7 +81,7 @@ class BybitOrderbookWebsocketWithTimestamp(BybitOrderbookWebsocket):
                 if len(topic_parts) >= 3:
                     symbol = topic_parts[2]
                     # Extract timestamp (ts field is common in Bybit websockets)
-                    ws_timestamp = data.get('ts', int(time.time() * 1000))
+                    ws_timestamp = data.get('ts')
                     self.timestamps[symbol] = ws_timestamp
 
     def get_data_with_timestamp(self):
