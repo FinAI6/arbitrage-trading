@@ -246,6 +246,9 @@ class BinanceOrderbookWebsocket:
         """
         return self.data
 
+    def set_symbols(self, symbols):
+        self.symbols = list(symbols)
+
     async def stop(self):
         """Stop the WebSocket connection"""
         self.running = False

@@ -85,11 +85,12 @@ async def display_spreads(aggregation_manager, trading_manager, interval):
 
         await asyncio.sleep(interval)
 
+
 async def main(test_duration_override=None, display_interval_override=None):
-    # Initialize WebSocket clients with no predefined symbols
-    # They will fetch all available symbols from the exchanges
+
     binance_client = BinanceOrderbookWebsocket()
     bybit_client = BybitOrderbookWebsocket()
+    await set_common_symbol(binance_client, bybit_client)
 
     config_manager = ConfigManager()
 
@@ -204,6 +205,23 @@ def parse_arguments():
         help=f'Interval in seconds between spread displays (default: {default_display_interval})'
     )
     return parser.parse_args()
+
+
+async def set_common_symbol(binance_client, bybit_client):
+    binance_symbols, bybit_symbols = await asyncio.gather(
+        binance_client.fetch_all_symbols(),
+        bybit_client.fetch_all_symbols()
+    )
+    binance_symbols_set = set([x.upper() for x in binance_symbols])
+    bybit_symbols_set = set(bybit_symbols)
+
+    common_symbols_set = binance_symbols_set.intersection(bybit_symbols_set)
+    common_symbols = list(common_symbols_set)
+
+    binance_client.set_symbols([x.lower() for x in common_symbols])
+    bybit_client.set_symbols(common_symbols)
+    print(f"Common symbols are set to {common_symbols}.")
+
 
 if __name__ == "__main__":
     # Windows 환경인지 확인
