@@ -43,7 +43,7 @@ class MonitoringManager:
         while self.running:
             count += 1
             await self.monitor_spreads()
-            if count % 60000 == 0:
+            if count % 60000 == 1:
                 latest_data = self.aggregation_manager.get_latest_spreads()
                 async with aiofiles.open('spread_log.txt', 'a+') as f:
                     await f.write(f"[{datetime.now()}]\n{json.dumps(latest_data, ensure_ascii=False)}\n\n")

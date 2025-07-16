@@ -1,8 +1,10 @@
+import asyncio
 from abc import ABC, abstractmethod
 from functools import wraps
 import json
 import math
 from aggregation_manager import AggregationManager
+from api_manager import ApiManager
 from config_manager import ConfigManager
 import ccxt.pro as ccxt
 
@@ -21,28 +23,42 @@ def status_decorator(state):
     return decorator
 
 class BaseTrader(ABC):
-    def __init__(self, symbol: str, direction: bool, aggregation_manager: AggregationManager):
+    def __init__(self, symbol: str, direction: bool, aggregation_manager: AggregationManager, api_manager: ApiManager, api_pair: tuple[ccxt.Exchange, ccxt.Exchange]):
         self.symbol = symbol
         self.direction = direction
         self.aggregation_manager = aggregation_manager
+        self.api_manager = api_manager
         self.config_manager = ConfigManager()
+        self.binance, self.bybit = api_pair
+
+        base_currency = 'USDT'
+        symbol_formatted = symbol.split(base_currency)[0] + "/" + base_currency + f":{base_currency}"
+        if symbol_formatted not in self.binance.markets.keys():
+            print(f"{symbol_formatted} not found in Binance markets. Skipping.")
+            self.status = "end"
+            return
+        elif symbol_formatted not in self.bybit.markets.keys():
+            print(f"{symbol_formatted} not found in Bybit markets. Skipping.")
+            self.status = "end"
+            return
+
         self.target_usdt = self.config_manager.getfloat('TRADING', 'target_usdt')
 
-        self.binance = ccxt.binance({
-            'apiKey': self.config_manager.get('EXCHANGE', 'binance_api_key'),
-            'secret': self.config_manager.get('EXCHANGE', 'binance_api_secret'),
-            'options': {'defaultType': 'future',
-                        'adjustForTimeDifference': True},
-            'enableRateLimit': True
-        })
-
-        self.bybit = ccxt.bybit({
-            'apiKey': self.config_manager.get('EXCHANGE', 'bybit_api_key'),
-            'secret': self.config_manager.get('EXCHANGE', 'bybit_api_secret'),
-            'options': {'defaultType': 'future',
-                        'adjustForTimeDifference': True},
-            'enableRateLimit': True
-        })
+        # self.binance = ccxt.binance({
+        #     'apiKey': self.config_manager.get('EXCHANGE', 'binance_api_key'),
+        #     'secret': self.config_manager.get('EXCHANGE', 'binance_api_secret'),
+        #     'options': {'defaultType': 'future',
+        #                 'adjustForTimeDifference': True},
+        #     'enableRateLimit': False
+        # })
+        #
+        # self.bybit = ccxt.bybit({
+        #     'apiKey': self.config_manager.get('EXCHANGE', 'bybit_api_key'),
+        #     'secret': self.config_manager.get('EXCHANGE', 'bybit_api_secret'),
+        #     'options': {'defaultType': 'future',
+        #                 'adjustForTimeDifference': True},
+        #     'enableRateLimit': False
+        # })
 
         self.enter_order_result: dict | None = {}
         self.enter_order_monitor_result: dict | None = {'info': {},
@@ -59,10 +75,6 @@ class BaseTrader(ABC):
 
     @status_decorator("initialize")
     async def initialize(self):
-        # await self.binance.load_markets()
-        # print("Finish loading Binance markets.")
-        # await self.bybit.load_markets()
-        # print("Finish loading Bybit markets.")
         self.status = "enter_order"
 
     @abstractmethod
@@ -132,7 +144,6 @@ class BaseTrader(ABC):
 
     async def convert_symbol(self, exchange, raw_symbol):
         try:
-            await exchange.load_markets()
             formatted = raw_symbol.replace("/", "").upper()
             for market_id, market in exchange.markets.items():
                 plain_id = market['id'].replace("/", "").upper()
@@ -153,7 +164,6 @@ class BaseTrader(ABC):
         return None
 
     async def calculate_qty_for_fixed_usdt(self, exchange, symbol, price, target_usdt):
-        await exchange.load_markets()
         market = exchange.market(symbol)
 
         qty = target_usdt / price
@@ -240,28 +250,39 @@ class BaseTrader(ABC):
         try:
             if exchange.id == 'binance':
                 try:
-                    await exchange.set_margin_mode(margin_mode, symbol)
+                    print(f"{exchange.id} 마진 모드 설정 시작: {margin_mode}")
+                    await asyncio.wait_for(exchange.set_margin_mode(margin_mode, symbol), timeout=30)
                     print(f"{exchange.id} 마진 모드 설정 완료: {margin_mode}")
                 except Exception as e:
                     print(f"Binance Set Margin Mode Exception: {e}")
+                    return False
             elif exchange.id == 'bybit':
                 try:
-                    await exchange.set_margin_mode(margin_mode, symbol, params={'category': 'linear'})
+                    print(f"{exchange.id} 마진 모드 설정 시작: {margin_mode}")
+                    await asyncio.wait_for(exchange.set_margin_mode(margin_mode, symbol, params={'category': 'linear'}), timeout=30)
                     print(f"{exchange.id} 마진 모드 설정 완료: {margin_mode}")
                 except Exception as e:
                     print(f"Bybit Set Margin Mode Exception: {e}")
-                return
+                    return False
+            return True
         except Exception as e:
             print(f"❌ 마진 모드 설정 중 오류 ({exchange.id}, {symbol}): {e}")
+            return False
 
     async def safe_set_leverage(self, exchange, symbol, leverage):
         try:
             if exchange.id == 'binance':
-                await exchange.set_leverage(leverage, symbol, params={'category': 'linear'})
-                print(f"{exchange.id} 레버리지 설정 완료: {leverage}")
+                try:
+                    print(f"{exchange.id} 레버리지 설정 시작: {leverage}")
+                    await asyncio.wait_for(exchange.set_leverage(leverage, symbol, params={'category': 'linear'}), timeout=30)
+                    print(f"{exchange.id} 레버리지 설정 완료: {leverage}")
+                except Exception as e:
+                    print(f"Binance Set Leverage Exception: {e}")
+                    return False
             elif exchange.id == 'bybit':
                 try:
-                    await exchange.set_leverage(leverage, symbol, params={'category': 'linear'})
+                    print(f"{exchange.id} 레버리지 설정 시작: {leverage}")
+                    await asyncio.wait_for(exchange.set_leverage(leverage, symbol, params={'category': 'linear'}), timeout=30)
                     print(f"{exchange.id} 레버리지 설정 완료: {leverage}")
                 except Exception as e:
                     error_data = json.loads(e.args[0][e.args[0].find("{"):])
@@ -270,9 +291,11 @@ class BaseTrader(ABC):
                         print(f"⚠️ 레버리지 이미 {leverage}배 설정됨 → 변경 생략 ({exchange.id}, {symbol})")
                     else:
                         print(f"❌ 레버리지 설정 중 오류 ({exchange.id}, {symbol}): {e}")
-                return
+                        return False
+            return True
         except Exception as e:
             print(f"❌ 레버리지 설정 중 오류 ({exchange.id}, {symbol}): {e}")
+            return False
 
     async def safe_cancel_order(self, exchange, symbol, order_id) -> None | dict:
         '''
