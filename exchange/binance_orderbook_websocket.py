@@ -18,7 +18,7 @@ class BinanceOrderbookWebsocket:
         """
         self.symbols = symbols or []
         self.test_duration = test_duration
-        self.ws_url = "wss://fstream.binance.com/ws"
+        self.ws_url = "wss://fstream.binance.com/stream?streams="
         self.data = {}  # Dictionary to store symbol:(bid_price, ask_price, bid_qty, ask_qty) data
         self.running = False
         self.start_time = None
@@ -67,7 +67,7 @@ class BinanceOrderbookWebsocket:
 
         # Binance has a limit on the number of streams per connection
         # Split into chunks of 200 symbols if needed
-        max_streams_per_connection = 200
+        max_streams_per_connection = 50
         symbol_chunks = [self.symbols[i:i + max_streams_per_connection] 
                          for i in range(0, len(self.symbols), max_streams_per_connection)]
 
@@ -140,9 +140,10 @@ class BinanceOrderbookWebsocket:
                 # WebSocket connection with timeout settings
                 async with websockets.connect(
                     connection_url,
-                    ping_interval=None,  # Send ping every 20 seconds
-                    ping_timeout=None,   # Wait 10 seconds for ping response
-                    close_timeout=15   # Wait 10 seconds for connection close
+                        ping_interval=150,  # < 3분 서버 ping주기보다 짧거나 비슷하게
+                        ping_timeout=20,  # 네트워크 지연 감지용
+                        max_queue=None,  # 백프레셔 방지(옵션)
+                        close_timeout=5,
                 ) as websocket:
                     print(f"Connected to Binance OrderBook WebSocket for {len(symbols)} symbols")
 
@@ -151,7 +152,7 @@ class BinanceOrderbookWebsocket:
 
                     while self.running:
                         try:
-                            message = await websocket.recv()
+                            message = await asyncio.wait_for(websocket.recv(), timeout=10)
                             await self.handle_message(message)
                         except websockets.exceptions.ConnectionClosed as e:
                             print(f"Binance OrderBook WebSocket connection closed: {e}")
