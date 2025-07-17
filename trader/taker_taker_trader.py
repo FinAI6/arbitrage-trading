@@ -7,29 +7,32 @@ from datetime import datetime
 import json
 import aiofiles
 from config_manager import ConfigManager
+from logging_manager import get_trader_logger
 
 
 class TakerTakerTrader(BaseTrader):
 
     async def enter_order(self):
+        logger = get_trader_logger(self.symbol)
         current_spread = self.calculate_spread_percent()
         if not self.check_valid_spread():
-            print(f"❌ [{self.symbol}] Spread {current_spread:.3f}% no longer valid. Ending trader.")
+            logger.warning(f"❌ [{self.symbol}] Spread {current_spread:.3f}% no longer valid. Ending trader.")
             self.status = "end"
             return None
 
-        print(f"🎯 [{self.symbol}] Valid spread detected: {current_spread:.3f}% - Entering position...")
+        logger.info(f"🎯 [{self.symbol}] Valid spread detected: {current_spread:.3f}% - Entering position...")
         check_enter_position: bool = await self.enter_position(self.symbol)
         if check_enter_position:
-            print(f"✅ [{self.symbol}] Position entry successful - Starting order monitoring")
+            logger.info(f"✅ [{self.symbol}] Position entry successful - Starting order monitoring")
             self.status = "enter_order_monitor"
         else:
-            print(f"❌ [{self.symbol}] Position entry failed - Ending trader")
+            logger.error(f"❌ [{self.symbol}] Position entry failed - Ending trader")
             self.status = "end"
         return None
 
     async def enter_order_monitor(self):
-        print(f"👀 [{self.symbol}] Starting order monitoring - Waiting for fills...")
+        logger = get_trader_logger(self.symbol)
+        logger.info(f"👀 [{self.symbol}] Starting order monitoring - Waiting for fills...")
         '''
         Bybit ccxt는 fetch_order가 안됨. -> fetch_open_order(id)로 조회하면 Open, Closed 상관없이 조회 가능
         {'info': {'symbol': 'BANANAS31USDT', 'orderType': 'Limit', 'orderLinkId': '', 'slLimitPrice': '0', 'orderId': 'db84d4a7-8800-4292-a027-abb8a08528c1', 'cancelType': 'UNKNOWN', 'avgPrice': '0.008805', 'stopOrderType': '', 'lastPriceOnCreated': '0.008806', 'orderStatus': 'Filled', 'createType': 'CreateByUser', 'takeProfit': '', 'cumExecValue': '9.6855', 'tpslMode': '', 'smpType': 'None', 'triggerDirection': '0', 'blockTradeId': '', 'isLeverage': '', 'rejectReason': 'EC_NoError', 'price': '0.008805', 'orderIv': '', 'createdTime': '1750991251841', 'tpTriggerBy': '', 'positionIdx': '0', 'timeInForce': 'GTC', 'leavesValue': '0', 'updatedTime': '1750991253554', 'side': 'Buy', 'smpGroup': '0', 'triggerPrice': '', 'tpLimitPrice': '0', 'cumExecFee': '0.0019371', 'leavesQty': '0', 'slTriggerBy': '', 'closeOnTrigger': False, 'placeType': '', 'cumExecQty': '1100', 'reduceOnly': False, 'qty': '1100', 'stopLoss': '', 'marketUnit': '', 'smpOrderId': '', 'triggerBy': '', 'nextPageCursor': 'db84d4a7-8800-4292-a027-abb8a08528c1%3A1750991251841%2Cdb84d4a7-8800-4292-a027-abb8a08528c1%3A1750991251841'}, 'id': 'db84d4a7-8800-4292-a027-abb8a08528c1', 'clientOrderId': None, 'timestamp': 1750991251841, 'datetime': '2025-06-27T02:27:31.841Z', 'lastTradeTimestamp': 1750991253554, 'lastUpdateTimestamp': 1750991253554, 'symbol': 'BANANAS31/USDT:USDT', 'type': 'limit', 'timeInForce': 'GTC', 'postOnly': False, 'reduceOnly': False, 'side': 'buy', 'price': 0.008805, 'triggerPrice': None, 'takeProfitPrice': None, 'stopLossPrice': None, 'amount': 1100.0, 'cost': 9.6855, 'average': 0.008805, 'filled': 1100.0, 'remaining': 0.0, 'status': 'closed', 'fee': {'cost': 0.0019371, 'currency': 'USDT'}, 'trades': [], 'fees': [{'cost': 0.0019371, 'currency': 'USDT'}], 'stopPrice': None}
@@ -64,23 +67,23 @@ class TakerTakerTrader(BaseTrader):
                 elapsed_time = int(time.time() - start_time)
                 current_spread = self.get_lastest_data()['spread_pct']
 
-                print(f"\n📊 [{self.symbol}] ORDER MONITORING STATUS (T+{elapsed_time}s)")
-                print(f"📈 Current Spread: {current_spread:+.3f}%")
+                logger.info(f"\n📊 [{self.symbol}] ORDER MONITORING STATUS (T+{elapsed_time}s)")
+                logger.info(f"📈 Current Spread: {current_spread:+.3f}%")
 
                 # Long order status
                 long_fill_pct = (long_order_result['filled'] / long_order_result['amount']) * 100
                 long_status = "✅ FILLED" if long_order_result['filled'] == long_order_result['amount'] else f"⏳ {long_fill_pct:.1f}%"
-                print(f"🟢 Long  ({self.enter_order_result['long_exchange'].id.upper()}): {long_order_result['filled']:.0f}/{long_order_result['amount']:.0f} @ ${long_order_result['average']:.6f} | {long_status}")
+                logger.info(f"🟢 Long  ({self.enter_order_result['long_exchange'].id.upper()}): {long_order_result['filled']:.0f}/{long_order_result['amount']:.0f} @ ${long_order_result['average']:.6f} | {long_status}")
 
                 # Short order status  
                 short_fill_pct = (short_order_result['filled'] / short_order_result['amount']) * 100
                 short_status = "✅ FILLED" if short_order_result['filled'] == short_order_result['amount'] else f"⏳ {short_fill_pct:.1f}%"
-                print(f"🔴 Short ({self.enter_order_result['short_exchange'].id.upper()}): {short_order_result['filled']:.0f}/{short_order_result['amount']:.0f} @ ${short_order_result['average']:.6f} | {short_status}")
-                print("-" * 60)
+                logger.info(f"🔴 Short ({self.enter_order_result['short_exchange'].id.upper()}): {short_order_result['filled']:.0f}/{short_order_result['amount']:.0f} @ ${short_order_result['average']:.6f} | {short_status}")
+                logger.info("-" * 60)
 
             # noinspection PyTypeChecker
             if (long_order_result['filled'] >= self.enter_order_result["long_qty"] - long_min_qty) and (short_order_result['filled'] >= self.enter_order_result["short_qty"] - short_min_qty):
-                print(f"🎉 [{self.symbol}] Both orders successfully filled! Moving to exit monitoring...")
+                logger.info(f"🎉 [{self.symbol}] Both orders successfully filled! Moving to exit monitoring...")
                 self.status = "exit_monitor"
                 long_cancel_result, short_cancel_result = await asyncio.gather(
                     self.safe_cancel_order(self.enter_order_result["long_exchange"],
@@ -118,18 +121,18 @@ class TakerTakerTrader(BaseTrader):
 
         # Case 1. 미체결 / 미체결 -> End
         if long_cancel_result['filled'] == 0 and short_cancel_result['filled'] == 0:
-            print(f"❌ [{self.symbol}] CASE 1: No fills on either exchange - Ending trade")
-            print(f"   🟢 {self.enter_order_result['long_exchange'].id.upper()}: 0/{long_cancel_result['amount']:.0f} filled")
-            print(f"   🔴 {self.enter_order_result['short_exchange'].id.upper()}: 0/{short_cancel_result['amount']:.0f} filled")
+            logger.warning(f"❌ [{self.symbol}] CASE 1: No fills on either exchange - Ending trade")
+            logger.info(f"   🟢 {self.enter_order_result['long_exchange'].id.upper()}: 0/{long_cancel_result['amount']:.0f} filled")
+            logger.info(f"   🔴 {self.enter_order_result['short_exchange'].id.upper()}: 0/{short_cancel_result['amount']:.0f} filled")
             self.calculate_info_order_result()
             self.status = "end"
             return None
 
         # Case 2. 최소수량 이하 미체결 / 최소수량 이하 미체결 -> 최소 수량 추가 거래
         if long_cancel_result['filled'] < long_min_qty and short_cancel_result['filled'] < short_min_qty:
-            print(f"⚠️  [{self.symbol}] CASE 2: Both fills below minimum quantity - Attempting additional trades")
-            print(f"   🟢 {self.enter_order_result['long_exchange'].id.upper()}: {long_cancel_result['filled']:.0f}/{long_cancel_result['amount']:.0f} filled (min: {long_min_qty:.0f})")
-            print(f"   🔴 {self.enter_order_result['short_exchange'].id.upper()}: {short_cancel_result['filled']:.0f}/{short_cancel_result['amount']:.0f} filled (min: {short_min_qty:.0f})")
+            logger.warning(f"⚠️  [{self.symbol}] CASE 2: Both fills below minimum quantity - Attempting additional trades")
+            logger.info(f"   🟢 {self.enter_order_result['long_exchange'].id.upper()}: {long_cancel_result['filled']:.0f}/{long_cancel_result['amount']:.0f} filled (min: {long_min_qty:.0f})")
+            logger.info(f"   🔴 {self.enter_order_result['short_exchange'].id.upper()}: {short_cancel_result['filled']:.0f}/{short_cancel_result['amount']:.0f} filled (min: {short_min_qty:.0f})")
 
             short_adjusted_remain_qty = self.make_qty_step(
                 market=self.enter_order_result['short_exchange'].markets[self.enter_order_result['short_symbol']],
@@ -186,9 +189,9 @@ class TakerTakerTrader(BaseTrader):
         # Case 3. 전체 체결 / 미체결 or 일부 체결 -> 미체결 or 일부 체결 쪽 남은 수량만큼 지정시장가
         if (long_cancel_result['filled'] >= self.enter_order_result["long_qty"] - long_min_qty) and (short_cancel_result['filled'] <= self.enter_order_result["short_qty"] - short_min_qty):
             # Short 추가 거래
-            print(f"[{self.symbol}] Case 3-1. (전체 체결 / 미체결 or 일부 체결) Short 추가 거래")
-            print(f"[{self.symbol}] {self.enter_order_result['long_exchange'].id} Filled ({long_cancel_result['filled']} / {long_cancel_result['amount']})")
-            print(f"[{self.symbol}] {self.enter_order_result['short_exchange'].id} Filled ({short_cancel_result['filled']} / {short_cancel_result['amount']})")
+            logger.info(f"⚠️  [{self.symbol}] CASE 3-1: Long filled, short needs additional trade")
+            logger.info(f"   🟢 {self.enter_order_result['long_exchange'].id.upper()}: {long_cancel_result['filled']:.0f}/{long_cancel_result['amount']:.0f} filled")
+            logger.info(f"   🔴 {self.enter_order_result['short_exchange'].id.upper()}: {short_cancel_result['filled']:.0f}/{short_cancel_result['amount']:.0f} filled")
 
             remain_qty = self.enter_order_result["short_qty"] - short_cancel_result['filled']
             adjusted_remain_qty = self.make_qty_step(
@@ -235,9 +238,9 @@ class TakerTakerTrader(BaseTrader):
             return None
         if (long_cancel_result['filled'] <= self.enter_order_result["long_qty"] - long_min_qty) and (short_cancel_result['filled'] >= self.enter_order_result["short_qty"] - short_min_qty):
             # Long 추가 거래
-            print(f"[{self.symbol}] Case 3-2. (전체 체결 / 미체결 or 일부 체결) Long 추가 거래")
-            print(f"[{self.symbol}] {self.enter_order_result['long_exchange'].id} Filled ({long_cancel_result['filled']} / {long_cancel_result['amount']})")
-            print(f"[{self.symbol}] {self.enter_order_result['short_exchange'].id} Filled ({short_cancel_result['filled']} / {short_cancel_result['amount']})")
+            logger.info(f"⚠️  [{self.symbol}] CASE 3-2: Short filled, long needs additional trade")
+            logger.info(f"   🟢 {self.enter_order_result['long_exchange'].id.upper()}: {long_cancel_result['filled']:.0f}/{long_cancel_result['amount']:.0f} filled")
+            logger.info(f"   🔴 {self.enter_order_result['short_exchange'].id.upper()}: {short_cancel_result['filled']:.0f}/{short_cancel_result['amount']:.0f} filled")
 
             remain_qty = self.enter_order_result["long_qty"] - long_cancel_result['filled']
             adjusted_remain_qty = self.make_qty_step(
@@ -287,9 +290,9 @@ class TakerTakerTrader(BaseTrader):
         filled_ratio_threshold = 0.03
         if (long_cancel_result['filled'] <= self.enter_order_result["long_qty"] - long_min_qty) and (short_cancel_result['filled'] <= self.enter_order_result["short_qty"] - short_min_qty):
             if abs((long_cancel_result['filled'] / long_cancel_result['amount']) - (short_cancel_result['filled'] / short_cancel_result['amount'])) < filled_ratio_threshold:
-                print(f"[{self.symbol}] Case 4-1. (일부 체결 / 미체결 or 일부 체결) 차이 < Threshold -> Skip")
-                print(f"[{self.symbol}] {self.enter_order_result['long_exchange'].id} Filled ({long_cancel_result['filled']} / {long_cancel_result['amount']})")
-                print(f"[{self.symbol}] {self.enter_order_result['short_exchange'].id} Filled ({short_cancel_result['filled']} / {short_cancel_result['amount']})")
+                logger.info(f"⚠️  [{self.symbol}] CASE 4-1: Partial fills with small difference - Skipping additional trades")
+                logger.info(f"   🟢 {self.enter_order_result['long_exchange'].id.upper()}: {long_cancel_result['filled']:.0f}/{long_cancel_result['amount']:.0f} filled")
+                logger.info(f"   🔴 {self.enter_order_result['short_exchange'].id.upper()}: {short_cancel_result['filled']:.0f}/{short_cancel_result['amount']:.0f} filled")
 
                 self.calculate_info_order_result()
 
@@ -297,9 +300,9 @@ class TakerTakerTrader(BaseTrader):
                 return None
             if (long_cancel_result['filled'] / long_cancel_result['amount']) > (short_cancel_result['filled'] / short_cancel_result['amount']):
                 # Short 추가 거래
-                print(f"[{self.symbol}] Case 4-2. (일부 체결 / 미체결 or 일부 체결) Short 추가 거래")
-                print(f"[{self.symbol}] {self.enter_order_result['long_exchange'].id} Filled ({long_cancel_result['filled']} / {long_cancel_result['amount']})")
-                print(f"[{self.symbol}] {self.enter_order_result['short_exchange'].id} Filled ({short_cancel_result['filled']} / {short_cancel_result['amount']})")
+                logger.info(f"⚠️  [{self.symbol}] CASE 4-2: Long filled more, short needs additional trade")
+                logger.info(f"   🟢 {self.enter_order_result['long_exchange'].id.upper()}: {long_cancel_result['filled']:.0f}/{long_cancel_result['amount']:.0f} filled")
+                logger.info(f"   🔴 {self.enter_order_result['short_exchange'].id.upper()}: {short_cancel_result['filled']:.0f}/{short_cancel_result['amount']:.0f} filled")
 
                 remain_qty = short_cancel_result['amount'] * ((long_cancel_result['filled'] / long_cancel_result['amount']) - (short_cancel_result['filled'] / short_cancel_result['amount']))
                 if remain_qty < short_min_qty:
@@ -351,9 +354,9 @@ class TakerTakerTrader(BaseTrader):
                 return None
             if (long_cancel_result['filled'] / long_cancel_result['amount']) < (short_cancel_result['filled'] / short_cancel_result['amount']):
                 # Long 추가 거래
-                print(f"[{self.symbol}] Case 4-3. (일부 체결 / 미체결 or 일부 체결) Long 추가 거래")
-                print(f"[{self.symbol}] {self.enter_order_result['long_exchange'].id} Filled ({long_cancel_result['filled']} / {long_cancel_result['amount']})")
-                print(f"[{self.symbol}] {self.enter_order_result['short_exchange'].id} Filled ({short_cancel_result['filled']} / {short_cancel_result['amount']})")
+                logger.info(f"⚠️  [{self.symbol}] CASE 4-3: Short filled more, long needs additional trade")
+                logger.info(f"   🟢 {self.enter_order_result['long_exchange'].id.upper()}: {long_cancel_result['filled']:.0f}/{long_cancel_result['amount']:.0f} filled")
+                logger.info(f"   🔴 {self.enter_order_result['short_exchange'].id.upper()}: {short_cancel_result['filled']:.0f}/{short_cancel_result['amount']:.0f} filled")
 
                 remain_qty = long_cancel_result['amount'] * ((short_cancel_result['filled'] / short_cancel_result['amount']) - (long_cancel_result['filled'] / long_cancel_result['amount']))
                 if remain_qty < long_min_qty:
@@ -404,9 +407,10 @@ class TakerTakerTrader(BaseTrader):
         return None
 
     async def exit_monitor(self):
+        logger = get_trader_logger(self.symbol)
         entry_spread = self.enter_order_monitor_result['info']['entry_spread_signed']
         direction_str = "🟢 LONG BINANCE/SHORT BYBIT" if self.direction else "🔴 SHORT BINANCE/LONG BYBIT"
-        print(f"🎯 [{self.symbol}] Starting exit monitoring | Entry spread: {entry_spread:+.3f}% | Direction: {direction_str}")
+        logger.info(f"🎯 [{self.symbol}] Starting exit monitoring | Entry spread: {entry_spread:+.3f}% | Direction: {direction_str}")
         stop_loss_percent: float = self.config_manager.getfloat('TRADER', 'stop_loss_percent')
         take_profit_percent: float = self.config_manager.getfloat('TRADER', 'take_profit_percent')
         max_exit_deque_len: int = self.config_manager.getint('TRADER', 'max_exit_deque_len')
@@ -425,15 +429,15 @@ class TakerTakerTrader(BaseTrader):
                 spread_change = current_exit_spread - entry_spread
                 elapsed_time = int(time.time() - strat_time)
 
-                print(f"📊 [{self.symbol}] EXIT MONITORING (T+{elapsed_time}s)")
-                print(f"   📈 Entry Spread: {entry_spread:+.3f}% | Current Exit Spread: {current_exit_spread:+.3f}% | Change: {spread_change:+.3f}%")
-                print(f"   🎯 Stop Loss: {-stop_loss_percent:.3f}% | Take Profit: {take_profit_percent:.3f}%")
+                logger.info(f"📊 [{self.symbol}] EXIT MONITORING (T+{elapsed_time}s)")
+                logger.info(f"   📈 Entry Spread: {entry_spread:+.3f}% | Current Exit Spread: {current_exit_spread:+.3f}% | Change: {spread_change:+.3f}%")
+                logger.info(f"   🎯 Stop Loss: {-stop_loss_percent:.3f}% | Take Profit: {take_profit_percent:.3f}%")
             # spread_sign = self.enter_monitor_result['entry_spread_signed']/abs(self.enter_monitor_result['entry_spread_signed'])
             if not self.direction:
                 current_data = self.get_lastest_data()
                 if self.enter_order_monitor_result['info']['entry_spread_signed'] >= 0:
                     self.status = "exit_order"
-                    print(f"❌ [{self.symbol}] WRONG ENTRY SPREAD - Expected negative, got {self.enter_order_monitor_result['info']['entry_spread_signed']:+.3f}%")
+                    logger.error(f"❌ [{self.symbol}] WRONG ENTRY SPREAD - Expected negative, got {self.enter_order_monitor_result['info']['entry_spread_signed']:+.3f}%")
                     self.append_exit_monitor_result(current_data, exit_type='wrong_entry')
                     return None
                 # current_data['spread_pct']: 부호 있음 / self.enter_order_monitor_result['info']['entry_spread']: 절대값
@@ -444,20 +448,20 @@ class TakerTakerTrader(BaseTrader):
                 if all(count_dict["stop_loss"]):
                     self.status = "exit_order"
                     spread_change = current_data['opposite_spread_pct'] - self.enter_order_monitor_result['info']['entry_spread_signed']
-                    print(f"🛑 [{self.symbol}] STOP LOSS TRIGGERED - Spread change: {spread_change:+.3f}% (threshold: {-stop_loss_percent:.3f}%)")
+                    logger.warning(f"🛑 [{self.symbol}] STOP LOSS TRIGGERED - Spread change: {spread_change:+.3f}% (threshold: {-stop_loss_percent:.3f}%)")
                     self.append_exit_monitor_result(current_data, exit_type='stop_loss')
                     return None
                 elif all(count_dict["take_profit"]):
                     self.status = "exit_order"
                     spread_change = current_data['opposite_spread_pct'] - self.enter_order_monitor_result['info']['entry_spread_signed']
-                    print(f"💰 [{self.symbol}] TAKE PROFIT TRIGGERED - Spread change: {spread_change:+.3f}% (threshold: {take_profit_percent:.3f}%)")
+                    logger.info(f"💰 [{self.symbol}] TAKE PROFIT TRIGGERED - Spread change: {spread_change:+.3f}% (threshold: {take_profit_percent:.3f}%)")
                     self.append_exit_monitor_result(current_data, exit_type='take_profit')
                     return None
             else:
                 current_data = self.get_lastest_data()
                 if self.enter_order_monitor_result['info']['entry_spread_signed'] <= 0:
                     self.status = "exit_order"
-                    print(f"❌ [{self.symbol}] WRONG ENTRY SPREAD - Expected positive, got {self.enter_order_monitor_result['info']['entry_spread_signed']:+.3f}%")
+                    logger.error(f"❌ [{self.symbol}] WRONG ENTRY SPREAD - Expected positive, got {self.enter_order_monitor_result['info']['entry_spread_signed']:+.3f}%")
                     self.append_exit_monitor_result(current_data, exit_type='wrong_entry')
                     return None
                 stop_loss_condition = current_data['opposite_spread_pct'] - self.enter_order_monitor_result['info']['entry_spread_signed'] > stop_loss_percent
@@ -467,28 +471,29 @@ class TakerTakerTrader(BaseTrader):
                 if all(count_dict["stop_loss"]):
                     self.status = "exit_order"
                     spread_change = current_data['opposite_spread_pct'] - self.enter_order_monitor_result['info']['entry_spread_signed']
-                    print(f"🛑 [{self.symbol}] STOP LOSS TRIGGERED - Spread change: {spread_change:+.3f}% (threshold: {stop_loss_percent:.3f}%)")
+                    logger.warning(f"🛑 [{self.symbol}] STOP LOSS TRIGGERED - Spread change: {spread_change:+.3f}% (threshold: {stop_loss_percent:.3f}%)")
                     self.append_exit_monitor_result(current_data, exit_type='stop_loss')
                     return None
                 elif all(count_dict["take_profit"]):
                     self.status = "exit_order"
                     spread_change = current_data['opposite_spread_pct'] - self.enter_order_monitor_result['info']['entry_spread_signed']
-                    print(f"💰 [{self.symbol}] TAKE PROFIT TRIGGERED - Spread change: {spread_change:+.3f}% (threshold: {take_profit_percent:.3f}%)")
+                    logger.info(f"💰 [{self.symbol}] TAKE PROFIT TRIGGERED - Spread change: {spread_change:+.3f}% (threshold: {take_profit_percent:.3f}%)")
                     self.append_exit_monitor_result(current_data, exit_type='take_profit')
                     return None
             await asyncio.sleep(exit_monitor_interval)
         self.status = "exit_order"
         elapsed_time = int(time.time() - strat_time)
-        print(f"⏰ [{self.symbol}] EXIT TIMEOUT - Maximum monitoring time ({max_exit_monitor_time:.0f}s) exceeded after {elapsed_time}s")
+        logger.warning(f"⏰ [{self.symbol}] EXIT TIMEOUT - Maximum monitoring time ({max_exit_monitor_time:.0f}s) exceeded after {elapsed_time}s")
         current_data = self.get_lastest_data()
         self.append_exit_monitor_result(current_data, exit_type='time_out')
         return None
 
     async def exit_order(self):
+        logger = get_trader_logger(self.symbol)
         # Todo: exit_type에 따라 바로 청산할지, 현재 spread를 확인하면서 할지 추가
         exit_type = self.exit_monitor_result.get('exit_type', 'unknown')
         current_spread = self.get_lastest_data()['opposite_spread_pct']
-        print(f"🔄 [{self.symbol}] CLOSING POSITIONS - Reason: {exit_type.upper()} | Current spread: {current_spread:+.3f}%")
+        logger.info(f"🔄 [{self.symbol}] CLOSING POSITIONS - Reason: {exit_type.upper()} | Current spread: {current_spread:+.3f}%")
 
         lower_exchange = self.exit_monitor_result['long_exchange']
         higher_exchange = self.exit_monitor_result['short_exchange']
@@ -538,20 +543,21 @@ class TakerTakerTrader(BaseTrader):
         self.status = "exit_order_monitor"
 
     async def exit_order_monitor(self):
-        print(f"Exit Order Monitoring {self.symbol} trader")
-        print(f"[{self.symbol}] exit_spread: {self.exit_order_result['exit_spread']}")
+        logger = get_trader_logger(self.symbol)
+        logger.info(f"🔍 [{self.symbol}] Starting exit order monitoring")
+        logger.info(f"📊 [{self.symbol}] Exit spread: {self.exit_order_result['exit_spread']:.3f}%")
 
         long_exchange = self.exit_order_result['long_exchange']
         long_symbol = self.exit_order_result['long_symbol']
         long_order_id = self.exit_order_result['long_order_id']
         long_result = await self.check_order_status(long_exchange, long_symbol, long_order_id)
-        print(f"[{self.symbol}] Long {long_exchange.id} order status: {long_result['filled']} / {long_result['average']}")
+        logger.info(f"🟢 [{self.symbol}] Long {long_exchange.id.upper()} exit order: {long_result['filled']:.0f} @ ${long_result['average']:.6f}")
 
         short_exchange = self.exit_order_result['short_exchange']
         short_symbol = self.exit_order_result['short_symbol']
         short_order_id = self.exit_order_result['short_order_id']
         short_result = await self.check_order_status(short_exchange, short_symbol, short_order_id)
-        print(f"[{self.symbol}] Short {short_exchange.id} order status: {short_result['filled']} / {short_result['average']}")
+        logger.info(f"🔴 [{self.symbol}] Short {short_exchange.id.upper()} exit order: {short_result['filled']:.0f} @ ${short_result['average']:.6f}")
 
         long_profit = (long_result['average'] - self.enter_order_monitor_result['info']['long_price_average']) * self.enter_order_monitor_result['info']['long_qty']
         short_profit = -1 * (short_result['average'] - self.enter_order_monitor_result['info']['short_price_average']) * self.enter_order_monitor_result['info']['short_qty']
@@ -593,6 +599,7 @@ class TakerTakerTrader(BaseTrader):
         self.status = 'end'
 
     async def enter_position(self, symbol):
+        logger = get_trader_logger(self.symbol)
         if self.direction:
             higher_exchange, lower_exchange = (self.binance, self.bybit)
         else:
@@ -604,7 +611,7 @@ class TakerTakerTrader(BaseTrader):
         higher_symbol = symbol.split(base_currency)[0] + "/" + base_currency + f":{base_currency}"
 
         if not lower_symbol or not higher_symbol:
-            print(f"⛔️ 유효하지 않은 심볼 → 건너뜀: {symbol}")
+            logger.error(f"⛔️ [{self.symbol}] Invalid symbol format - Skipping: {symbol}")
             return False
 
         try:
@@ -615,19 +622,19 @@ class TakerTakerTrader(BaseTrader):
                                                                                  self.safe_set_margin_mode(higher_exchange, higher_symbol, 'isolated'))
 
                 if not check_lower_success or not check_higher_success:
-                    print("Something went wrong while setting margin mode")
+                    logger.error(f"❌ [{self.symbol}] Failed to set margin mode")
                     return False
 
                 check_lower_success, check_higher_success = await asyncio.gather(self.safe_set_leverage(lower_exchange, lower_symbol, 1),
                                                                                  self.safe_set_leverage(higher_exchange, higher_symbol, 1))
 
                 if not check_lower_success or not check_higher_success:
-                    print("Something went wrong while setting leverage")
+                    logger.error(f"❌ [{self.symbol}] Failed to set leverage")
                     return False
 
                 self.api_manager.add_leverage_margin_done_list(self.symbol)
 
-            print(datetime.now())
+            logger.debug(f"[{self.symbol}] Position entry started at {datetime.now()}")
             lastest_data = self.get_lastest_data()
 
             if self.direction:
@@ -640,11 +647,11 @@ class TakerTakerTrader(BaseTrader):
 
             # 거래소 간 qty 기준으로 인해 spread 대비 qty 수량 차이가 훨씬 클 경우 거래 x
             if abs(higher_qty - lower_qty) / min(higher_qty, lower_qty) > abs(higher_price - lower_price) / min(higher_price, lower_price) * 5:
-                print(f"[{self.symbol}] Difference of qty is too large. Ending trader.")
+                logger.warning(f"❌ [{self.symbol}] Quantity difference too large - Ending trader")
                 return False
 
             if not self.check_valid_spread():
-                print(f"[{self.symbol}] No more valid spreads. Ending trader.")
+                logger.warning(f"❌ [{self.symbol}] No more valid spreads - Ending trader")
                 return False
 
             enter_buy_price_margin = self.config_manager.getfloat('TRADER', 'enter_buy_price_margin')
@@ -660,18 +667,18 @@ class TakerTakerTrader(BaseTrader):
 
             # Todo: 잔고 부족 시, 있는 수준으로만?
             if lower_balance < usdt_required or higher_balance < usdt_required:
-                print(f"⛔️ 잔고 부족 → 건너뜀: {symbol}")
-                print(f"   ↳ 필요 USDT: {usdt_required:.2f}")
-                print(f"   ↳ {lower_exchange.id} 잔고: {lower_balance:.4f} USDT")
-                print(f"   ↳ {higher_exchange.id} 잔고: {higher_balance:.4f} USDT")
+                logger.warning(f"⛔️ [{self.symbol}] Insufficient balance - Skipping trade")
+                logger.info(f"   💰 Required USDT: {usdt_required:.2f}")
+                logger.info(f"   💰 {lower_exchange.id.upper()} balance: {lower_balance:.4f} USDT")
+                logger.info(f"   💰 {higher_exchange.id.upper()} balance: {higher_balance:.4f} USDT")
                 return False
 
-            print("=" * 60)
-            print(f"🚀 진입 시도: {symbol}")
-            print(f"롱: {lower_exchange.id} - {lower_qty} | 숏: {higher_exchange.id} - {higher_qty}")
-            print(f"Binance 가격: Ask {lastest_data['binance_ask_price']} | Bid {lastest_data['binance_bid_price']}")
-            print(f"Bybit   가격: Ask {lastest_data['bybit_ask_price']} | Bid {lastest_data['bybit_bid_price']}")
-            print(f"스프레드={lastest_data['spread_pct']:+.2f}%")
+            logger.info("=" * 60)
+            logger.info(f"🚀 [{self.symbol}] ENTERING POSITION")
+            logger.info(f"   🟢 Long: {lower_exchange.id.upper()} - {lower_qty:.0f} | 🔴 Short: {higher_exchange.id.upper()} - {higher_qty:.0f}")
+            logger.info(f"   📊 Binance prices: Ask ${lastest_data['binance_ask_price']:.6f} | Bid ${lastest_data['binance_bid_price']:.6f}")
+            logger.info(f"   📊 Bybit prices:   Ask ${lastest_data['bybit_ask_price']:.6f} | Bid ${lastest_data['bybit_bid_price']:.6f}")
+            logger.info(f"   📈 Current spread: {lastest_data['spread_pct']:+.3f}%")
 
             bybit_params = {'category': 'linear'}
 
@@ -699,14 +706,14 @@ class TakerTakerTrader(BaseTrader):
                 "timestamp": time.time()
             }
 
-            print(f"⏳ 지정가 주문 완료 → 체결 대기 중 (symbol: {symbol})")
-            print("=" * 60 + "\n")
+            logger.info(f"⏳ [{self.symbol}] Limit orders placed - Waiting for fills")
+            logger.info("=" * 60)
 
             return True
 
         except Exception as e:
-            print(f"❌ 진입 실패: {e}")
-            traceback.print_exc()
+            logger.error(f"❌ [{self.symbol}] Position entry failed: {e}")
+            logger.debug(f"[{self.symbol}] Traceback: {traceback.format_exc()}")
             return False
 
     def append_long_short_order_result(self, long_order_result=None, short_order_result=None):
@@ -741,9 +748,10 @@ class TakerTakerTrader(BaseTrader):
         else:
             real_entry_spread_signed = real_entry_spread_pct
 
-        print(f"[{self.symbol}] Real Entry spread: {real_entry_spread_signed:.3f}%")
-        print(f"[{self.symbol}] [Short] {self.enter_order_result['short_exchange'].id} / {short_price_average}")
-        print(f"[{self.symbol}] [Long] {self.enter_order_result['long_exchange'].id} / {long_price_average}")
+        logger = get_trader_logger(self.symbol)
+        logger.info(f"📊 [{self.symbol}] Real entry spread: {real_entry_spread_signed:+.3f}%")
+        logger.info(f"   🔴 Short ({self.enter_order_result['short_exchange'].id.upper()}): ${short_price_average:.6f}")
+        logger.info(f"   🟢 Long ({self.enter_order_result['long_exchange'].id.upper()}): ${long_price_average:.6f}")
 
         self.enter_order_monitor_result["info"] = {"entry_spread": abs(real_entry_spread_pct),
                                                    "entry_spread_signed": real_entry_spread_signed,
@@ -760,14 +768,15 @@ class TakerTakerTrader(BaseTrader):
         long_qty, short_qty = self.calculate_sum_qty(long_result, short_result)
 
         # Division by zero 방지
+        logger = get_trader_logger(self.symbol)
         if long_qty == 0:
-            print(f"⚠️ [{self.symbol}] Long quantity is zero, cannot calculate average price")
+            logger.warning(f"⚠️ [{self.symbol}] Long quantity is zero, cannot calculate average price")
             long_price_average = 0
         else:
             long_price_average = sum(long_cost_list) / long_qty
 
         if short_qty == 0:
-            print(f"⚠️ [{self.symbol}] Short quantity is zero, cannot calculate average price")
+            logger.warning(f"⚠️ [{self.symbol}] Short quantity is zero, cannot calculate average price")
             short_price_average = 0
         else:
             short_price_average = sum(short_cost_list) / short_qty
@@ -782,7 +791,8 @@ class TakerTakerTrader(BaseTrader):
 
     def append_exit_monitor_result(self, current_data, exit_type: str):
         if exit_type not in ['wrong_entry', 'stop_loss', 'take_profit', 'time_out']:
-            print(f"[{self.symbol}] Unknown exit type: {exit_type}")
+            logger = get_trader_logger(self.symbol)
+            logger.error(f"❌ [{self.symbol}] Unknown exit type: {exit_type}")
             return None
 
         long_price_average, short_price_average = self.calculate_average_price(self.enter_order_monitor_result['long'], self.enter_order_monitor_result['short'])

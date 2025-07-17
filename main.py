@@ -12,6 +12,9 @@ from trading_manager import TradingManager
 from monitoring_manager import MonitoringManager
 from config_manager import ConfigManager
 from api_manager import ApiManager
+from logging_manager import get_main_logger
+
+logger = get_main_logger()
 
 
 # No need to specify symbols, they will be fetched dynamically from the exchanges
@@ -37,22 +40,22 @@ async def display_spreads(aggregation_manager, trading_manager, interval):
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         if latest_spreads:
-            print("\n" + "="*80)
-            print(f"📊 ARBITRAGE SYSTEM STATUS - {current_time}")
-            print("="*80)
+            logger.info("\n" + "="*80)
+            logger.info(f"📊 ARBITRAGE SYSTEM STATUS - {current_time}")
+            logger.info("="*80)
 
             # System overview
             active_trades = len(trading_manager.tasks)
             max_trades = trading_manager.max_symbols
             total_symbols = len(latest_spreads)
 
-            print(f"🔄 Active Trades: {active_trades}/{max_trades}")
-            print(f"📈 Monitored Symbols: {total_symbols}")
+            logger.info(f"🔄 Active Trades: {active_trades}/{max_trades}")
+            logger.info(f"📈 Monitored Symbols: {total_symbols}")
 
             if active_trades > 0:
-                print(f"🎯 Trading Symbols: {list(trading_manager.tasks.keys())}")
+                logger.info(f"🎯 Trading Symbols: {list(trading_manager.tasks.keys())}")
 
-            print("-" * 80)
+            logger.info("-" * 80)
 
             # Sort by absolute spread percentage (descending)
             sorted_spreads = sorted(
@@ -62,7 +65,7 @@ async def display_spreads(aggregation_manager, trading_manager, interval):
             )
 
             # Show top 10 spreads
-            print("🔝 TOP SPREADS:")
+            logger.info("🔝 TOP SPREADS:")
             for i, (symbol, spread_pct) in enumerate(sorted_spreads[:10]):
                 spread_data = aggregation_manager.get_spread_data()[symbol][-1]
                 binance_price = spread_data['binance_price']
@@ -74,14 +77,14 @@ async def display_spreads(aggregation_manager, trading_manager, interval):
                 direction = "🟢 BUY BINANCE/SELL BYBIT" if spread_pct > 0 else "🔴 SELL BINANCE/BUY BYBIT"
                 status = "🎯 TRADING" if symbol in trading_manager.tasks else "👀 MONITORING"
 
-                print(f"{i+1:2d}. {symbol:15s} | {spread_pct:+7.3f}% | {direction} | {status}")
-                print(f"     💰 Binance: ${binance_price:>12.6f} (Vol: ${binance_volume:>10,.0f})")
-                print(f"     💰 Bybit:   ${bybit_price:>12.6f} (Vol: ${bybit_volume:>10,.0f})")
-                print()
+                logger.info(f"{i+1:2d}. {symbol:15s} | {spread_pct:+7.3f}% | {direction} | {status}")
+                logger.info(f"     💰 Binance: ${binance_price:>12.6f} (Vol: ${binance_volume:>10,.0f})")
+                logger.info(f"     💰 Bybit:   ${bybit_price:>12.6f} (Vol: ${bybit_volume:>10,.0f})")
+                logger.info("")
 
-            print("="*80)
+            logger.info("="*80)
         else:
-            print(f"\n⏳ [{current_time}] Waiting for spread data...")
+            logger.info(f"\n⏳ [{current_time}] Waiting for spread data...")
 
         await asyncio.sleep(interval)
 
@@ -123,7 +126,7 @@ async def main(test_duration_override=None, display_interval_override=None):
                 # On Windows, we'll rely on KeyboardInterrupt exception instead
                 pass
     except Exception as e:
-        print(f"Warning: Could not set up signal handlers: {e}")
+        logger.warning(f"Could not set up signal handlers: {e}")
 
     # Start all tasks
     tasks = [
@@ -138,15 +141,15 @@ async def main(test_duration_override=None, display_interval_override=None):
     #     asyncio.create_task(binance_client.connect()),
     # ]
 
-    print("Starting WebSocket connections, aggregation_manager, and managers...")
+    logger.info("Starting WebSocket connections, aggregation_manager, and managers...")
 
     if test_duration > 0:
         # Run for a specified duration and then exit
-        print(f"Test mode: Will run for {test_duration} seconds")
+        logger.info(f"Test mode: Will run for {test_duration} seconds")
         try:
             await asyncio.wait_for(asyncio.gather(*tasks), timeout=test_duration)
         except asyncio.TimeoutError:
-            print(f"\nTest completed after {test_duration} seconds")
+            logger.info(f"\nTest completed after {test_duration} seconds")
             await shutdown(binance_client, bybit_client, aggregation_manager, trading_manager, monitoring_manager)
     else:
         # Run indefinitely until interrupted
@@ -156,7 +159,7 @@ async def shutdown(binance_client, bybit_client, aggregation_manager, trading_ma
     """
     Gracefully shut down all components
     """
-    print("\nShutting down...")
+    logger.info("\nShutting down...")
 
     # Stop all components
     if monitoring_manager:
@@ -172,7 +175,7 @@ async def shutdown(binance_client, bybit_client, aggregation_manager, trading_ma
     tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
 
     if tasks:
-        print(f"Cancelling {len(tasks)} pending tasks...")
+        logger.info(f"Cancelling {len(tasks)} pending tasks...")
         for task in tasks:
             task.cancel()
 
@@ -180,10 +183,10 @@ async def shutdown(binance_client, bybit_client, aggregation_manager, trading_ma
         try:
             await asyncio.gather(*tasks, return_exceptions=True)
         except Exception as e:
-            print(f"Error during task cancellation: {e}")
+            logger.error(f"Error during task cancellation: {e}")
 
     # Don't stop the event loop here, let asyncio.run() handle it
-    print("Shutdown complete")
+    logger.info("Shutdown complete")
 
 def parse_arguments():
     """Parse command line arguments"""
@@ -220,7 +223,7 @@ async def set_common_symbol(binance_client, bybit_client):
 
     binance_client.set_symbols([x.lower() for x in common_symbols])
     bybit_client.set_symbols(common_symbols)
-    print(f"Common symbols are set to {common_symbols}.")
+    logger.info(f"Common symbols are set to {len(common_symbols)} symbols.")
 
 
 if __name__ == "__main__":

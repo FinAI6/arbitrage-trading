@@ -6,6 +6,7 @@ import aiofiles
 from aggregation_manager import AggregationManager
 from trading_manager import TradingManager
 from config_manager import ConfigManager
+from logging_manager import get_monitoring_logger
 
 class MonitoringManager:
     def __init__(self, aggregation_manager: AggregationManager, trading_manager: TradingManager):
@@ -19,6 +20,7 @@ class MonitoringManager:
         self.aggregation_manager = aggregation_manager
         self.trading_manager = trading_manager
         self.config_manager = ConfigManager()
+        self.logger = get_monitoring_logger()
 
         # Read parameters from config.ini
         self.consecutive_count = self.config_manager.getint('MONITORING', 'consecutive_count')
@@ -129,16 +131,16 @@ class MonitoringManager:
 
                 if abs((current_datetime - binance_datetime).total_seconds()) > time_diff_threshold or abs((current_datetime - bybit_datetime).total_seconds()) > time_diff_threshold:
                     if (current_datetime - self.last_timestamp_too_old_print_time).total_seconds() > 60:
-                        print(f"Timestamp too old - Current: {current_datetime}, Binance: {binance_datetime}, Bybit: {bybit_datetime}")
+                        self.logger.warning(f"Timestamp too old - Current: {current_datetime}, Binance: {binance_datetime}, Bybit: {bybit_datetime}")
                         self.last_timestamp_too_old_print_time = current_datetime
                     continue
 
                 success = await self.trading_manager.add_symbol(symbol, data['direction'] == 'positive')
                 if success:
-                    print(f"\n🔍 [Monitoring Manager] Found {len(top_symbols)} trading opportunities:")
+                    self.logger.info(f"\n🔍 [Monitoring Manager] Found {len(top_symbols)} trading opportunities:")
                     direction_str = "🟢 LONG BINANCE/SHORT BYBIT" if data['direction'] == 'positive' else "🔴 SHORT BINANCE/LONG BYBIT"
-                    print(f"   {i + 1}. {symbol}: {data['spread_pct']:.3f}% avg spread | {direction_str}")
-                    # print(f"      ❌ Failed to add {symbol} to trading")
+                    self.logger.info(f"   {i + 1}. {symbol}: {data['spread_pct']:.3f}% avg spread | {direction_str}")
+                    # self.logger.debug(f"      ❌ Failed to add {symbol} to trading")
         else:
             # Only print this occasionally to avoid spam
             import time
@@ -146,8 +148,8 @@ class MonitoringManager:
                 self._last_no_opportunities_print = 0
 
             current_time = time.time()
-            if current_time - self._last_no_opportunities_print > 300:  # Print every 5 minutes
-                print(f"🔍 [Monitoring Manager] No trading opportunities found (spread threshold: {self.config_manager.getfloat('AGGREGATION', 'arb_threshold'):.3f}%)")
+            if current_time - self._last_no_opportunities_print > 300:  # Log every 5 minutes
+                self.logger.info(f"🔍 [Monitoring Manager] No trading opportunities found (spread threshold: {self.config_manager.getfloat('AGGREGATION', 'arb_threshold'):.3f}%)")
                 self._last_no_opportunities_print = current_time
 
     def get_consecutive_count(self):

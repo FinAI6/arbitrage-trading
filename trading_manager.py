@@ -5,6 +5,7 @@ from aggregation_manager import AggregationManager
 from trader.taker_taker_trader import TakerTakerTrader
 from config_manager import ConfigManager
 from api_manager import ApiManager
+from logging_manager import get_logger
 
 
 class TradingManager:
@@ -18,6 +19,7 @@ class TradingManager:
         self.aggregation_manager = aggregation_manager
         self.config_manager = ConfigManager()
         self.api_manager = api_manager
+        self.logger = get_logger('trading')
 
         # Read parameters from config.ini
         self.max_symbols = self.config_manager.getint('TRADING', 'max_symbols')
@@ -36,7 +38,7 @@ class TradingManager:
         api_pair = await self.api_manager.get_api_pair()
 
         if api_pair is None:
-            print(f"[Trading Manager] API Manager is not available.")
+            self.logger.error(f"[Trading Manager] API Manager is not available.")
             return False
 
         trader = TakerTakerTrader(symbol=symbol, direction=direction, aggregation_manager=self.aggregation_manager, api_manager=self.api_manager, api_pair=api_pair)
@@ -44,14 +46,14 @@ class TradingManager:
         self.tasks[symbol] = task
 
         direction_str = "🟢 LONG BINANCE/SHORT BYBIT" if direction else "🔴 SHORT BINANCE/LONG BYBIT"
-        print(f"🎯 [Trading Manager] Started trading {symbol} | Direction: {direction_str}")
-        print(f"📊 [Trading Manager] Active trades: {len(self.tasks)}/{self.max_symbols} | Symbols: {list(self.tasks.keys())}")
+        self.logger.info(f"🎯 [Trading Manager] Started trading {symbol} | Direction: {direction_str}")
+        self.logger.info(f"📊 [Trading Manager] Active trades: {len(self.tasks)}/{self.max_symbols} | Symbols: {list(self.tasks.keys())}")
 
         def on_task_done(task):
             self.tasks.pop(symbol, None)
-            print(f"✅ [Trading Manager] Completed trading {symbol} | Active trades: {len(self.tasks)}/{self.max_symbols}")
+            self.logger.info(f"✅ [Trading Manager] Completed trading {symbol} | Active trades: {len(self.tasks)}/{self.max_symbols}")
             if len(self.tasks) > 0:
-                print(f"📊 [Trading Manager] Remaining symbols: {list(self.tasks.keys())}")
+                self.logger.info(f"📊 [Trading Manager] Remaining symbols: {list(self.tasks.keys())}")
             asyncio.create_task(self.api_manager.return_api_pair(api_pair=api_pair))
 
         task.add_done_callback(on_task_done)
