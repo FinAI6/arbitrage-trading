@@ -27,6 +27,8 @@ class MonitoringManager:
         self.top_volume_num = self.config_manager.getint('MONITORING', 'top_volume_num')
         self.running = False
 
+        self.last_timestamp_too_old_print_time = datetime.now()
+
     async def start(self, interval: float = None):
         """
         Start the Monitoring Manager
@@ -126,7 +128,9 @@ class MonitoringManager:
                 bybit_datetime = datetime.fromtimestamp(data['data'][-1]['bybit_timestamp'] / 1000)
 
                 if abs((current_datetime - binance_datetime).total_seconds()) > time_diff_threshold or abs((current_datetime - bybit_datetime).total_seconds()) > time_diff_threshold:
-                    print(f"Timestamp too old - Current: {current_datetime}, Binance: {binance_datetime}, Bybit: {bybit_datetime}")
+                    if (current_datetime - self.last_timestamp_too_old_print_time).total_seconds() > 60:
+                        print(f"Timestamp too old - Current: {current_datetime}, Binance: {binance_datetime}, Bybit: {bybit_datetime}")
+                        self.last_timestamp_too_old_print_time = current_datetime
                     continue
 
                 success = await self.trading_manager.add_symbol(symbol, data['direction'] == 'positive')

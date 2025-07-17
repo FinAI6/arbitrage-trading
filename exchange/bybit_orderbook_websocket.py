@@ -5,6 +5,7 @@ import aiohttp
 import sys
 from collections import deque
 from datetime import datetime, timedelta
+from typing import Optional
 
 
 class BybitOrderbookWebsocket:
@@ -151,45 +152,30 @@ class BybitOrderbookWebsocket:
         # 시작할 때 볼륨 데이터 초기 로드
         await self.fetch_24h_volumes()
 
-        # Initialize reconnection parameters
-        max_retries = 10000
-        retry_count = 0
-        base_delay = 1  # Start with 1 second delay
-        max_delay = 60  # Maximum delay of 60 seconds
+        self.running = True
+        backoff = 1
 
-        while self.running or retry_count == 0:
+        while self.running:
             try:
-                self.running = True
+                print(f"[Bybit] Attempting connection... (attempt {retry_count + 1})")
 
-                # WebSocket connection with timeout settings
+                # WebSocket connection with improved timeout settings
                 async with websockets.connect(
                         self.ws_url,
                         ping_interval=20,  # Send ping every 20 seconds
                         ping_timeout=10,  # Wait 10 seconds for ping response
-                        close_timeout=10  # Wait 10 seconds for connection close
+                        close_timeout=10,  # Wait 10 seconds for connection close
+                        compression=None,  # Disable compression for stability
+                        max_size=10**7,    # Increase max message size
+                        read_limit=10**7   # Increase read buffer size
                 ) as websocket:
                     self.websocket = websocket
-                    print(f"Connected to Bybit OrderBook WebSocket for {len(self.symbols)} symbols")
+                    print(f"✅ [Bybit] Connected successfully for {len(self.symbols)} symbols")
 
-                    retry_count = 0
+                    retry_count = 0  # Reset retry count on successful connection
 
-                    # Bybit has a limit on the number of subscriptions per message
-                    # Split into chunks of 10 symbols to avoid exceeding the limit
-                    max_symbols_per_subscription = 10
-                    symbol_chunks = [self.symbols[i:i + max_symbols_per_subscription] 
-                                    for i in range(0, len(self.symbols), max_symbols_per_subscription)]
-
-                    # Subscribe to orderbook.1 channels for all symbols in chunks
-                    # orderbook.1 provides the best bid/ask prices and quantities
-                    for chunk in symbol_chunks:
-                        subscription_message = {
-                            "op": "subscribe",
-                            "args": [f"orderbook.1.{symbol}" for symbol in chunk]
-                        }
-                        await websocket.send(json.dumps(subscription_message))
-                        print(f"Subscribed to orderbook.1 for {len(chunk)} symbols: {chunk[:3]}...")
-                        # Small delay to avoid rate limiting
-                        await asyncio.sleep(0.1)
+                    # Subscribe to orderbook channels
+                    await self._subscribe_to_orderbook(websocket)
 
                     # Start message processing, volume update, and test duration monitoring tasks
                     message_task = asyncio.create_task(self.process_messages())
@@ -200,49 +186,50 @@ class BybitOrderbookWebsocket:
                         duration_task = asyncio.create_task(self._monitor_test_duration())
                         tasks.append(duration_task)
 
-                    try:
-                        await asyncio.gather(*tasks, return_exceptions=True)
-                    finally:
-                        # Clean up tasks
-                        for task in tasks:
-                            if not task.done():
-                                task.cancel()
-                                try:
-                                    await task
-                                except asyncio.CancelledError:
-                                    pass
-                        self.websocket = None
+                    # 첫 번째 예외 발생 시 반환
+                    done, pending = await asyncio.wait(
+                        tasks, return_when=asyncio.FIRST_EXCEPTION
+                    )
 
-            except websockets.exceptions.ConnectionClosed:
-                if not self.running:
-                    print("Bybit OrderBook WebSocket connection closed by user")
-                    break
-                print("Bybit OrderBook WebSocket connection closed, attempting to reconnect...")
+                    # 예외가 있으면 raise → 외부 except로 이동
+                    for d in done:
+                        exc = d.exception()
+                        if exc:
+                            raise exc
 
-            except websockets.exceptions.WebSocketException as e:
-                print(f"Bybit OrderBook WebSocket exception: {e}")
+            except (websockets.ConnectionClosed, asyncio.TimeoutError, OSError) as e:
+                print(f"Bybit OrderBook WebSocket connection closed: {e}")
+                # 남아있는 태스크 정리
+                for t in pending:
+                    t.cancel()
+                # 지수형 back-off 후 재접속
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, 30)
+                continue  # while self.running
 
-            except (OSError, ConnectionError, asyncio.TimeoutError) as e:
-                print(f"Bybit OrderBook WebSocket network error: {e}")
-
-            except Exception as e:
-                print(f"Bybit OrderBook WebSocket unexpected error: {e}")
-
-            # Reconnection logic
-            if not self.running:
+            except asyncio.CancelledError:
+                # 외부 stop()
                 break
 
-            retry_count += 1
-            if retry_count > max_retries:
-                print(f"Bybit OrderBook WebSocket failed to reconnect after {max_retries} attempts. Giving up.")
-                break
+            finally:
+                self.websocket = None
 
-            # Exponential backoff for reconnection delay
-            delay = min(base_delay * (2 ** (retry_count - 1)), max_delay)
-            print(f"Reconnecting in {delay} seconds... (attempt {retry_count}/{max_retries})")
-            await asyncio.sleep(delay)
+        print("Bybit websocket loop stopped.")
 
-        print("Bybit OrderBook WebSocket connection permanently closed")
+    async def _subscribe_to_orderbook(self, websocket):
+        """Subscribe to orderbook channels"""
+        max_symbols_per_subscription = 10
+        symbol_chunks = [self.symbols[i:i + max_symbols_per_subscription] 
+                        for i in range(0, len(self.symbols), max_symbols_per_subscription)]
+
+        for chunk in symbol_chunks:
+            subscription_message = {
+                "op": "subscribe",
+                "args": [f"orderbook.1.{symbol}" for symbol in chunk]
+            }
+            await websocket.send(json.dumps(subscription_message))
+            print(f"📡 [Bybit] Subscribed to {len(chunk)} symbols")
+            await asyncio.sleep(0.1)  # Prevent rate limiting
 
     async def handle_message(self, message):
         """
