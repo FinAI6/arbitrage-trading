@@ -124,7 +124,7 @@ class BinanceOrderbookWebsocket:
         """
         # For order book data, we use bookTicker streams which provide best bid/ask prices
         streams = [f"{symbol}@bookTicker" for symbol in symbols]
-        connection_url = f"{self.ws_url}/{'/'.join(streams)}"
+        connection_url = f"{self.ws_url}{'/'.join(streams)}"
 
         # Initialize reconnection parameters
         max_retries = 10
@@ -140,10 +140,10 @@ class BinanceOrderbookWebsocket:
                 # WebSocket connection with timeout settings
                 async with websockets.connect(
                     connection_url,
-                        ping_interval=150,  # < 3분 서버 ping주기보다 짧거나 비슷하게
-                        ping_timeout=20,  # 네트워크 지연 감지용
-                        max_queue=None,  # 백프레셔 방지(옵션)
-                        close_timeout=5,
+                    ping_interval=150,  # < 3분 서버 ping주기보다 짧거나 비슷하게
+                    ping_timeout=20,  # 네트워크 지연 감지용
+                    max_queue=None,  # 백프레셔 방지(옵션)
+                    close_timeout=5,
                 ) as websocket:
                     print(f"Connected to Binance OrderBook WebSocket for {len(symbols)} symbols")
 
