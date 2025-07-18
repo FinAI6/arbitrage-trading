@@ -429,9 +429,9 @@ class TakerTakerTrader(BaseTrader):
                 spread_change = current_exit_spread - entry_spread
                 elapsed_time = int(time.time() - strat_time)
 
-                logger.info(f"📊 [{self.symbol}] EXIT MONITORING (T+{elapsed_time}s)")
-                logger.info(f"   📈 Entry Spread: {entry_spread:+.3f}% | Current Exit Spread: {current_exit_spread:+.3f}% | Change: {spread_change:+.3f}%")
-                logger.info(f"   🎯 Stop Loss: {-stop_loss_percent:.3f}% | Take Profit: {take_profit_percent:.3f}%")
+                logger.info(f"📊 [{self.symbol}] EXIT MONITORING (T+{elapsed_time}s)"
+                            f"\n   📈 Entry Spread: {entry_spread:+.3f}% | Current Exit Spread: {current_exit_spread:+.3f}% | Change: {spread_change:+.3f}%"
+                            f"\n   🎯 Stop Loss: {-stop_loss_percent:.3f}% | Take Profit: {take_profit_percent:.3f}%")
             # spread_sign = self.enter_monitor_result['entry_spread_signed']/abs(self.enter_monitor_result['entry_spread_signed'])
             if not self.direction:
                 current_data = self.get_lastest_data()
@@ -648,6 +648,7 @@ class TakerTakerTrader(BaseTrader):
             # 거래소 간 qty 기준으로 인해 spread 대비 qty 수량 차이가 훨씬 클 경우 거래 x
             if abs(higher_qty - lower_qty) / min(higher_qty, lower_qty) > abs(higher_price - lower_price) / min(higher_price, lower_price) * 5:
                 logger.warning(f"❌ [{self.symbol}] Quantity difference too large - Ending trader")
+                self.black_list.add(self.symbol)
                 return False
 
             if not self.check_valid_spread():

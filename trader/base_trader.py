@@ -23,13 +23,15 @@ def status_decorator(state):
     return decorator
 
 class BaseTrader(ABC):
-    def __init__(self, symbol: str, direction: bool, aggregation_manager: AggregationManager, api_manager: ApiManager, api_pair: tuple[ccxt.Exchange, ccxt.Exchange]):
+    def __init__(self, symbol: str, direction: bool, aggregation_manager: AggregationManager, api_manager: ApiManager, api_pair: tuple[ccxt.Exchange, ccxt.Exchange], black_list: set):
         self.symbol = symbol
         self.direction = direction
         self.aggregation_manager = aggregation_manager
         self.api_manager = api_manager
         self.config_manager = ConfigManager()
         self.binance, self.bybit = api_pair
+
+        self.black_list = black_list
 
         base_currency = 'USDT'
         symbol_formatted = symbol.split(base_currency)[0] + "/" + base_currency + f":{base_currency}"

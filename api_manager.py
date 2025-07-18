@@ -174,12 +174,13 @@ class ApiManager:
     async def get_api_pair(self, timeout: float = 10.0) -> Optional[Tuple[ccxt.Exchange, ccxt.Exchange]]:
         """API 쌍 가져오기 (가장 최신 것을 우선적으로)"""
         # 초기화가 완료될 때까지 대기
-        # if not self._initialized:
-        #     print("⏳ Waiting for API manager initialization...")
-        #     await self.wait_for_initialization()
-
         if not self._initialized:
-            raise Exception("API Manager initialization failed")
+            print("⏳ Waiting for API manager initialization...")
+            await asyncio.sleep(60)
+            return None
+
+        # if not self._initialized:
+        #     raise Exception("API Manager initialization failed")
 
         start_time = asyncio.get_event_loop().time()
         while asyncio.get_event_loop().time() - start_time < timeout:

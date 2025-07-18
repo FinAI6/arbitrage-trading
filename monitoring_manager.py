@@ -135,6 +135,9 @@ class MonitoringManager:
                         self.last_timestamp_too_old_print_time = current_datetime
                     continue
 
+                if symbol in self.trading_manager.black_list:
+                    continue
+
                 success = await self.trading_manager.add_symbol(symbol, data['direction'] == 'positive')
                 if success:
                     self.logger.info(f"\n🔍 [Monitoring Manager] Found {len(top_symbols)} trading opportunities:")
