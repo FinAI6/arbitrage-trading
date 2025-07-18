@@ -52,7 +52,7 @@ class ApiManager:
 
         self._initialized = False
         self._load_markets_task = None
-        self._load_markets_interval = 3  # 1시간마다 load_markets 실행
+        self._load_markets_interval = 300  # 1시간마다 load_markets 실행
         self._running = False
 
         # 백그라운드에서 초기화 시작

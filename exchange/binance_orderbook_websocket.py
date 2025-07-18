@@ -212,7 +212,7 @@ class BinanceOrderbookWebsocket:
             message (str): JSON message from WebSocket
         """
         try:
-            data = json.loads(message)
+            data = json.loads(message)['data']
         except json.JSONDecodeError:
             print(f"Invalid JSON received: {message}")
             return
@@ -295,4 +295,4 @@ if __name__ == "__main__":
     if sys.platform == 'win32':
         # SelectorEventLoop로 강제로 설정
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(test_binance_orderbook_websocket(30))
+    asyncio.run(test_binance_orderbook_websocket())
