@@ -3,6 +3,7 @@ import json
 import websockets
 import aiohttp
 import sys
+import orjson
 from collections import deque
 from datetime import datetime
 
@@ -142,7 +143,7 @@ class BinanceOrderbookWebsocket:
                     connection_url,
                     ping_interval=None,  # < 3분 서버 ping주기보다 짧거나 비슷하게
                     ping_timeout=None,  # 네트워크 지연 감지용
-                    max_queue=None,  # 백프레셔 방지(옵션)
+                    max_queue=32,  # 백프레셔 방지(옵션)
                     close_timeout=5,
                 ) as websocket:
                     print(f"Connected to Binance OrderBook WebSocket for {len(symbols)} symbols")
@@ -212,8 +213,8 @@ class BinanceOrderbookWebsocket:
             message (str): JSON message from WebSocket
         """
         try:
-            data = json.loads(message)['data']
-        except json.JSONDecodeError:
+            data = orjson.loads(message)['data']
+        except orjson.JSONDecodeError:
             print(f"Invalid JSON received: {message}")
             return
 
@@ -222,10 +223,10 @@ class BinanceOrderbookWebsocket:
         # u: order book updateId, s: symbol, b: best bid price, B: best bid qty, a: best ask price, A: best ask qty
         if 's' in data and 'b' in data and 'a' in data:
             symbol = data['s'].upper()  # Symbol is uppercase in Binance response
-            bid_price = float(data['b'])    # Best bid price
-            ask_price = float(data['a'])    # Best ask price
-            bid_qty = float(data['B'])      # Best bid quantity
-            ask_qty = float(data['A'])      # Best ask quantity
+            bid_price = data['b']    # Best bid price
+            ask_price = data['a']    # Best ask price
+            bid_qty = data['B']      # Best bid quantity
+            ask_qty = data['A']      # Best ask quantity
 
             ws_timestamp = data.get('E')
 

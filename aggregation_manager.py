@@ -59,11 +59,11 @@ class AggregationManager:
 
         # Calculate spread for each common symbol
         for symbol in common_symbols:
-            binance_bid_price = binance_data[symbol][0]
-            binance_ask_price = binance_data[symbol][1]
+            binance_bid_price = float(binance_data[symbol][0])
+            binance_ask_price = float(binance_data[symbol][1])
             binance_volume = binance_data[symbol][-2]
-            bybit_bid_price = bybit_data[symbol][0]
-            bybit_ask_price = bybit_data[symbol][1]
+            bybit_bid_price = float(bybit_data[symbol][0])
+            bybit_ask_price = float(bybit_data[symbol][1])
             bybit_volume = bybit_data[symbol][-2]
             # binance_price = binance_data[symbol][0]
             # bybit_price = bybit_data[symbol][0]

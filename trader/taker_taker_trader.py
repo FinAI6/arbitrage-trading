@@ -642,8 +642,8 @@ class TakerTakerTrader(BaseTrader):
             else:
                 higher_price, lower_price = lastest_data['bybit_bid_price'], lastest_data['binance_ask_price']
 
-            lower_qty = await self.calculate_qty_for_fixed_usdt(lower_exchange, lower_symbol, lower_price, self.target_usdt)
-            higher_qty = await self.calculate_qty_for_fixed_usdt(higher_exchange, higher_symbol, higher_price, self.target_usdt)
+            lower_qty = self.calculate_qty_for_fixed_usdt(lower_exchange, lower_symbol, lower_price, self.target_usdt)
+            higher_qty = self.calculate_qty_for_fixed_usdt(higher_exchange, higher_symbol, higher_price, self.target_usdt)
 
             # 거래소 간 qty 기준으로 인해 spread 대비 qty 수량 차이가 훨씬 클 경우 거래 x
             if abs(higher_qty - lower_qty) / min(higher_qty, lower_qty) > abs(higher_price - lower_price) / min(higher_price, lower_price) * 5:

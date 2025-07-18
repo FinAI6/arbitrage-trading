@@ -3,6 +3,7 @@ import json
 import websockets
 import aiohttp
 import sys
+import orjson
 from collections import deque
 from datetime import datetime, timedelta
 from typing import Optional
@@ -239,8 +240,8 @@ class BybitOrderbookWebsocket:
             message (str): JSON message from WebSocket
         """
         try:
-            data = json.loads(message)
-        except json.JSONDecodeError:
+            data = orjson.loads(message)
+        except orjson.JSONDecodeError:
             print(f"Invalid JSON received: {message}")
             return
 
@@ -278,10 +279,10 @@ class BybitOrderbookWebsocket:
                         asks = orderbook_data['a']
 
                         if bids and asks and len(bids[0]) >= 2 and len(asks[0]) >= 2:
-                            bid_price = float(bids[0][0])  # Best bid price
-                            bid_qty = float(bids[0][1])    # Best bid quantity
-                            ask_price = float(asks[0][0])  # Best ask price
-                            ask_qty = float(asks[0][1])    # Best ask quantity
+                            bid_price = bids[0][0]  # Best bid price
+                            bid_qty = bids[0][1]    # Best bid quantity
+                            ask_price = asks[0][0]  # Best ask price
+                            ask_qty = asks[0][1]    # Best ask quantity
 
                             # 실시간 오더북 데이터와 저장된 볼륨 데이터 결합
                             volume_usdt_24h = self.volume_data.get(symbol, 0)

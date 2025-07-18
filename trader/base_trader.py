@@ -144,7 +144,7 @@ class BaseTrader(ABC):
         # else:
         #     return False
 
-    async def convert_symbol(self, exchange, raw_symbol):
+    def convert_symbol(self, exchange, raw_symbol):
         try:
             formatted = raw_symbol.replace("/", "").upper()
             for market_id, market in exchange.markets.items():
@@ -165,7 +165,7 @@ class BaseTrader(ABC):
             print(f"❌ [{exchange.id}] convert_symbol 실패: {raw_symbol} → {e}")
         return None
 
-    async def calculate_qty_for_fixed_usdt(self, exchange, symbol, price, target_usdt):
+    def calculate_qty_for_fixed_usdt(self, exchange, symbol, price, target_usdt):
         market = exchange.market(symbol)
 
         qty = target_usdt / price
