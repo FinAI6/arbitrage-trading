@@ -72,7 +72,7 @@ async def display_spreads(aggregation_manager, trading_manager, interval):
 
             # Show top 10 spreads
             logger.info("🔝 POSITIVE TOP SPREADS:")
-            for i, (symbol, binance_timestamp, bybit_timestamp, positive_spread_pct, negative_spread_pct) in enumerate(sorted_positive_spreads[:3]):
+            for i, (symbol, data) in enumerate(sorted_positive_spreads[:3]):
                 spread_data = aggregation_manager.get_spread_data()[symbol][-1]
                 binance_price = float(spread_data['binance_bid_price'])
                 bybit_price = float(spread_data['bybit_ask_price'])
@@ -83,13 +83,13 @@ async def display_spreads(aggregation_manager, trading_manager, interval):
                 direction = "🔴 SELL BINANCE/BUY BYBIT"
                 status = "🎯 TRADING" if symbol in trading_manager.tasks else "👀 MONITORING"
 
-                logger.info(f"{i+1:2d}. {symbol:15s} | {positive_spread_pct:+7.3f}% | {direction} | {status}")
+                logger.info(f"{i+1:2d}. {symbol:15s} | {data['positive_spread']:+7.3f}% | {direction} | {status}")
                 logger.info(f"     💰 Binance: ${binance_price:>12.6f} (Vol: ${binance_volume:>10,.0f})")
                 logger.info(f"     💰 Bybit:   ${bybit_price:>12.6f} (Vol: ${bybit_volume:>10,.0f})")
                 logger.info("")
 
             logger.info("🔝 NEGATIVE TOP SPREADS:")
-            for i, (symbol, binance_timestamp, bybit_timestamp, positive_spread_pct, negative_spread_pct) in enumerate(sorted_negative_spreads[:3]):
+            for i, (symbol, data) in enumerate(sorted_negative_spreads[:3]):
                 spread_data = aggregation_manager.get_spread_data()[symbol][-1]
                 binance_price = float(spread_data['binance_ask_price'])
                 bybit_price = float(spread_data['bybit_bid_price'])
@@ -100,7 +100,7 @@ async def display_spreads(aggregation_manager, trading_manager, interval):
                 direction = "🟢 BUY BINANCE/SELL BYBIT"
                 status = "🎯 TRADING" if symbol in trading_manager.tasks else "👀 MONITORING"
 
-                logger.info(f"{i+1:2d}. {symbol:15s} | {negative_spread_pct:+7.3f}% | {direction} | {status}")
+                logger.info(f"{i+1:2d}. {symbol:15s} | {data['negative_spread']:+7.3f}% | {direction} | {status}")
                 logger.info(f"     💰 Binance: ${binance_price:>12.6f} (Vol: ${binance_volume:>10,.0f})")
                 logger.info(f"     💰 Bybit:   ${bybit_price:>12.6f} (Vol: ${bybit_volume:>10,.0f})")
                 logger.info("")
