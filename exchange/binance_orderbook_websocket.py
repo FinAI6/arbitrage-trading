@@ -146,8 +146,6 @@ class BinanceOrderbookWebsocket:
                     close_timeout=5,
                     max_queue=32,  # 백프레셔 방지(옵션)
                     compression=None,
-                    max_size=10 ** 7,
-                    read_limit=10 ** 7,
                 ) as websocket:
                     print(f"Connected to Binance OrderBook WebSocket for {len(symbols)} symbols")
 
