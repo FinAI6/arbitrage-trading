@@ -250,10 +250,19 @@ async def set_common_symbol(binance_client, bybit_client):
 
 
 if __name__ == "__main__":
-    # Windows 환경인지 확인
-    if sys.platform == 'win32':
-        # SelectorEventLoop로 강제로 설정
+    # ── choose an event‑loop policy ─────────────────────────────────────────────────
+    if sys.platform.startswith("win"):
+        # Windows: keep the selector loop you already use
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    else:  # Linux / macOS
+        try:
+            import uvloop  # pip install uvloop
+
+            asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+            print("✅  uvloop enabled (Unix)")
+        except ImportError:
+            print("⚠️  uvloop not installed – falling back to default loop")
     try:
         args = parse_arguments()
 
