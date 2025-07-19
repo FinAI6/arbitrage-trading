@@ -61,12 +61,12 @@ async def display_spreads(aggregation_manager, trading_manager, interval):
             # Sort by absolute spread percentage (descending)
             sorted_positive_spreads = sorted(
                 latest_spreads.items(), 
-                key=lambda x: x[2],
+                key=lambda x: x[1]['positive_spread'],
                 reverse=True
             )
             sorted_negative_spreads = sorted(
                 latest_spreads.items(),
-                key=lambda x: x[3],
+                key=lambda x: x[1]['negative_spread'],
                 reverse=False
             )
 
@@ -89,7 +89,7 @@ async def display_spreads(aggregation_manager, trading_manager, interval):
                 logger.info("")
 
             logger.info("🔝 NEGATIVE TOP SPREADS:")
-            for i, (symbol, binance_timestamp, bybit_timestamp, positive_spread_pct, negative_spread_pct) in enumerate(sorted_positive_spreads[:3]):
+            for i, (symbol, binance_timestamp, bybit_timestamp, positive_spread_pct, negative_spread_pct) in enumerate(sorted_negative_spreads[:3]):
                 spread_data = aggregation_manager.get_spread_data()[symbol][-1]
                 binance_price = float(spread_data['binance_ask_price'])
                 bybit_price = float(spread_data['bybit_bid_price'])
@@ -158,7 +158,7 @@ async def main(test_duration_override=None, display_interval_override=None):
         asyncio.create_task(aggregation_manager.start()),
         asyncio.create_task(monitoring_manager.start()),
         asyncio.create_task(api_manager.start()),
-        # asyncio.create_task(display_spreads(aggregation_manager, trading_manager, display_interval))
+        asyncio.create_task(display_spreads(aggregation_manager, trading_manager, display_interval))
     ]
     # tasks = [
     #     asyncio.create_task(binance_client.connect()),
