@@ -59,26 +59,48 @@ async def display_spreads(aggregation_manager, trading_manager, interval):
             logger.info("-" * 80)
 
             # Sort by absolute spread percentage (descending)
-            sorted_spreads = sorted(
+            sorted_positive_spreads = sorted(
                 latest_spreads.items(), 
-                key=lambda x: abs(x[1]), 
+                key=lambda x: x[2],
                 reverse=True
+            )
+            sorted_negative_spreads = sorted(
+                latest_spreads.items(),
+                key=lambda x: x[3],
+                reverse=False
             )
 
             # Show top 10 spreads
-            logger.info("🔝 TOP SPREADS:")
-            for i, (symbol, spread_pct) in enumerate(sorted_spreads[:10]):
+            logger.info("🔝 POSITIVE TOP SPREADS:")
+            for i, (symbol, binance_timestamp, bybit_timestamp, positive_spread_pct, negative_spread_pct) in enumerate(sorted_positive_spreads[:3]):
                 spread_data = aggregation_manager.get_spread_data()[symbol][-1]
-                binance_price = spread_data['binance_price']
-                bybit_price = spread_data['bybit_price']
-                binance_volume = spread_data['binance_volume']
-                bybit_volume = spread_data['bybit_volume']
+                binance_price = float(spread_data['binance_bid_price'])
+                bybit_price = float(spread_data['bybit_ask_price'])
+                binance_volume = float(spread_data['binance_volume'])
+                bybit_volume = float(spread_data['bybit_volume'])
 
                 # Determine direction and color
-                direction = "🟢 BUY BINANCE/SELL BYBIT" if spread_pct > 0 else "🔴 SELL BINANCE/BUY BYBIT"
+                direction = "🔴 SELL BINANCE/BUY BYBIT"
                 status = "🎯 TRADING" if symbol in trading_manager.tasks else "👀 MONITORING"
 
-                logger.info(f"{i+1:2d}. {symbol:15s} | {spread_pct:+7.3f}% | {direction} | {status}")
+                logger.info(f"{i+1:2d}. {symbol:15s} | {positive_spread_pct:+7.3f}% | {direction} | {status}")
+                logger.info(f"     💰 Binance: ${binance_price:>12.6f} (Vol: ${binance_volume:>10,.0f})")
+                logger.info(f"     💰 Bybit:   ${bybit_price:>12.6f} (Vol: ${bybit_volume:>10,.0f})")
+                logger.info("")
+
+            logger.info("🔝 NEGATIVE TOP SPREADS:")
+            for i, (symbol, binance_timestamp, bybit_timestamp, positive_spread_pct, negative_spread_pct) in enumerate(sorted_positive_spreads[:3]):
+                spread_data = aggregation_manager.get_spread_data()[symbol][-1]
+                binance_price = float(spread_data['binance_ask_price'])
+                bybit_price = float(spread_data['bybit_bid_price'])
+                binance_volume = float(spread_data['binance_volume'])
+                bybit_volume = float(spread_data['bybit_volume'])
+
+                # Determine direction and color
+                direction = "🟢 BUY BINANCE/SELL BYBIT"
+                status = "🎯 TRADING" if symbol in trading_manager.tasks else "👀 MONITORING"
+
+                logger.info(f"{i+1:2d}. {symbol:15s} | {negative_spread_pct:+7.3f}% | {direction} | {status}")
                 logger.info(f"     💰 Binance: ${binance_price:>12.6f} (Vol: ${binance_volume:>10,.0f})")
                 logger.info(f"     💰 Bybit:   ${bybit_price:>12.6f} (Vol: ${bybit_volume:>10,.0f})")
                 logger.info("")
