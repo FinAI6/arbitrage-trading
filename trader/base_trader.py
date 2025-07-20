@@ -7,6 +7,7 @@ from aggregation_manager import AggregationManager
 from api_manager import ApiManager
 from config_manager import ConfigManager
 import ccxt.pro as ccxt
+import traceback
 
 
 def status_decorator(state):
@@ -96,18 +97,13 @@ class BaseTrader(ABC):
 
     @status_decorator("end")
     async def end(self):
-        """모든 리소스 정리"""
         try:
-            if hasattr(self, 'binance') and self.binance:
-                await self.binance.close()
-                print("✅ Binance 연결 종료")
-
-            if hasattr(self, 'bybit') and self.bybit:
-                await self.bybit.close()
-                print("✅ Bybit 연결 종료")
-
+            await asyncio.gather(
+                self.binance.load_time_difference(),
+                self.bybit.load_time_difference()
+            )
         except Exception as e:
-            print(f"리소스 정리 중 오류: {e}")
+            print(f"Load Time Difference Error: {e}")
 
     def get_lastest_data(self):
         data = self.aggregation_manager.get_lastest_spread_by_symbol(self.symbol)
@@ -265,6 +261,7 @@ class BaseTrader(ABC):
                     print(f"{exchange.id} 마진 모드 설정 완료: {margin_mode}")
                 except Exception as e:
                     print(f"Bybit Set Margin Mode Exception: {e}")
+                    traceback.print_exc()
                     return False
             return True
         except Exception as e:
