@@ -116,7 +116,9 @@ async def main(test_duration_override=None, display_interval_override=None):
 
     binance_client = BinanceOrderbookWebsocket()
     bybit_client = BybitOrderbookWebsocketMulti()
-    common_symbol_list = await set_common_symbol(binance_client, bybit_client)
+    common_symbol_list = await get_common_symbol(binance_client, bybit_client)
+    common_symbol_list = [x for x in common_symbol_list if x not in ["BTCUSDT", "ETHUSDT", "XRPUSDT", "BNBUSDT", "SOLUSDT", "DOGEUSDT", "ADAUSDT", "TRXUSDT", "WBTCUSDT", "XLMUSDT", "SUIUSDT", "LINKUSDT"]]
+    await set_common_symbol(binance_client, bybit_client, common_symbol_list)
 
     config_manager = ConfigManager()
 
@@ -236,7 +238,7 @@ def parse_arguments():
     return parser.parse_args()
 
 
-async def set_common_symbol(binance_client, bybit_client):
+async def get_common_symbol(binance_client, bybit_client):
     binance_symbols, bybit_symbols = await asyncio.gather(
         binance_client.fetch_all_symbols(),
         bybit_client.fetch_all_symbols()
@@ -247,11 +249,12 @@ async def set_common_symbol(binance_client, bybit_client):
     common_symbols_set = binance_symbols_set.intersection(bybit_symbols_set)
     common_symbols = list(common_symbols_set)
 
-    binance_client.set_symbols([x.lower() for x in common_symbols])
-    bybit_client.set_symbols(common_symbols)
-    logger.info(f"Common symbols are set to {len(common_symbols)} symbols.")
-
     return common_symbols
+
+async def set_common_symbol(binance_client, bybit_client, common_symbol_list):
+    binance_client.set_symbols([x.lower() for x in common_symbol_list])
+    bybit_client.set_symbols(common_symbol_list)
+    logger.info(f"Common symbols are set to {len(common_symbol_list)} symbols.")
 
 
 if __name__ == "__main__":
