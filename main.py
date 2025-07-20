@@ -116,7 +116,7 @@ async def main(test_duration_override=None, display_interval_override=None):
 
     binance_client = BinanceOrderbookWebsocket()
     bybit_client = BybitOrderbookWebsocketMulti()
-    await set_common_symbol(binance_client, bybit_client)
+    common_symbol_list = await set_common_symbol(binance_client, bybit_client)
 
     config_manager = ConfigManager()
 
@@ -131,6 +131,9 @@ async def main(test_duration_override=None, display_interval_override=None):
     )
 
     api_manager = ApiManager()
+
+    await api_manager.wait_for_initialization(timeout=300)
+    await api_manager.set_initial_margin_mode_and_leverage(symbol_list=common_symbol_list)
 
     # Initialize trading and monitoring managers
     trading_manager = TradingManager(aggregation_manager=aggregation_manager, api_manager=api_manager)
@@ -247,6 +250,8 @@ async def set_common_symbol(binance_client, bybit_client):
     binance_client.set_symbols([x.lower() for x in common_symbols])
     bybit_client.set_symbols(common_symbols)
     logger.info(f"Common symbols are set to {len(common_symbols)} symbols.")
+
+    return common_symbols
 
 
 if __name__ == "__main__":

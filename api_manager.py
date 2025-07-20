@@ -1,8 +1,10 @@
 import asyncio
+import traceback
 from collections import deque
 from typing import Optional, Tuple, Dict, Any
 from config_manager import ConfigManager
 import ccxt.pro as ccxt
+import json
 
 
 class ApiManager:
@@ -193,6 +195,90 @@ class ApiManager:
             except Exception as e:
                 print(f"❌ Error during periodic load_markets: {e}")
                 await asyncio.sleep(60)  # 에러 발생 시 1분 대기
+
+    async def set_initial_margin_mode_and_leverage(self, symbol_list: list):
+        base_currency = "USDT"
+
+        binance, bybit = await self.get_api_pair()
+
+        binance.id = "binance"
+        bybit.id = "bybit"
+
+        for symbol in symbol_list:
+            print(symbol)
+            formatted_symbol = symbol.split(base_currency)[0] + "/" + base_currency + f":{base_currency}"
+
+            check_binance_success, check_bybit_success = await asyncio.gather(
+                self.safe_set_margin_mode(binance, formatted_symbol, 'isolated'),
+                self.safe_set_margin_mode(bybit, formatted_symbol, 'isolated'))
+
+            if not check_binance_success or not check_bybit_success:
+                print(f"❌ [{formatted_symbol}] Failed to set margin mode")
+                continue
+
+            check_binance_success, check_bybit_success = await asyncio.gather(
+                self.safe_set_leverage(binance, formatted_symbol, 1),
+                self.safe_set_leverage(bybit, formatted_symbol, 1))
+
+            if not check_binance_success or not check_bybit_success:
+                print(f"❌ [{formatted_symbol}] Failed to set leverage")
+                continue
+
+            self.add_leverage_margin_done_list(symbol)
+            print(f"{symbol} margin mode and leverage set successfully.")
+
+        await asyncio.sleep(0.3)
+
+
+    async def safe_set_margin_mode(self, exchange, symbol: str, margin_mode: str):
+        if margin_mode not in ['isolated', 'crossed']:
+            print("Margin Type must be 'isolated' or 'crossed'. Skipping.")
+            raise ValueError("Invalid margin type.")
+        try:
+            if exchange.id == 'binance':
+                try:
+                    await asyncio.wait_for(exchange.set_margin_mode(margin_mode, symbol), timeout=30)
+                except Exception as e:
+                    print(f"Binance Set Margin Mode Exception: {e}")
+                    return False
+            elif exchange.id == 'bybit':
+                try:
+                    await asyncio.wait_for(exchange.set_margin_mode(margin_mode, symbol, params={'category': 'linear'}), timeout=30)
+                except Exception as e:
+                    print(f"Bybit Set Margin Mode Exception: {e}")
+                    return False
+            return True
+        except Exception as e:
+            print(f"❌ 마진 모드 설정 중 오류 ({exchange.id}, {symbol}): {e}")
+            return False
+
+    async def safe_set_leverage(self, exchange, symbol, leverage):
+        try:
+            if exchange.id == 'binance':
+                try:
+                    print(f"{exchange.id} 레버리지 설정 시작: {leverage}")
+                    await asyncio.wait_for(exchange.set_leverage(leverage, symbol, params={'category': 'linear'}), timeout=30)
+                    print(f"{exchange.id} 레버리지 설정 완료: {leverage}")
+                except Exception as e:
+                    print(f"Binance Set Leverage Exception: {e}")
+                    return False
+            elif exchange.id == 'bybit':
+                try:
+                    print(f"{exchange.id} 레버리지 설정 시작: {leverage}")
+                    await asyncio.wait_for(exchange.set_leverage(leverage, symbol, params={'category': 'linear'}), timeout=30)
+                    print(f"{exchange.id} 레버리지 설정 완료: {leverage}")
+                except Exception as e:
+                    error_data = json.loads(e.args[0][e.args[0].find("{"):])
+                    # e: {'retCode': 110043, 'retMsg': 'leverage not modified', 'result': {}, 'retExtInfo': {}, 'time': 1750833253619}
+                    if error_data.get('retMsg') == 'leverage not modified':
+                        print(f"⚠️ 레버리지 이미 {leverage}배 설정됨 → 변경 생략 ({exchange.id}, {symbol})")
+                    else:
+                        print(f"❌ 레버리지 설정 중 오류 ({exchange.id}, {symbol}): {e}")
+                        return False
+            return True
+        except Exception as e:
+            print(f"❌ 레버리지 설정 중 오류 ({exchange.id}, {symbol}): {e}")
+            return False
 
     async def wait_for_initialization(self, timeout: float = 60.0):
         """초기화 완료까지 대기"""
