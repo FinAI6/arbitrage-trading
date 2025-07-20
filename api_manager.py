@@ -224,9 +224,9 @@ class ApiManager:
                 if self.api_deque:
                     # 가장 최신 것을 가져옴 (앞쪽에서)
                     api_pair = self.api_deque.popleft()
-                    # Markets 최신 정보 업데이트
-                    for i in range(2):
-                        api_pair[i].set_markets(self.shared_markets[i])
+                    # # Markets 최신 정보 업데이트
+                    # for i in range(2):
+                    #     api_pair[i].set_markets(self.shared_markets[i])
                     return api_pair
 
             # 잠깐 대기 후 다시 시도
