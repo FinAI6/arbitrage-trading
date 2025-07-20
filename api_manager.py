@@ -35,7 +35,8 @@ class ApiManager:
             'secret': self.binance_api_secret,
             'options': {
                 'defaultType': 'future',
-                'adjustForTimeDifference': True
+                'adjustForTimeDifference': True,
+                "recvWindow": 60000
             },
             'enableRateLimit': False,
         }
@@ -45,13 +46,15 @@ class ApiManager:
             'secret': self.bybit_api_secret,
             'options': {
                 'defaultType': 'future',
-                'adjustForTimeDifference': True
+                'adjustForTimeDifference': True,
+                "recvWindow": 60000
             },
             'enableRateLimit': False,
         }
 
         self._initialized = False
         self._load_markets_task = None
+        self._load_time_difference_task = None
         self._load_markets_interval = 300  # 1시간마다 load_markets 실행
         self._running = False
 
@@ -84,6 +87,18 @@ class ApiManager:
         except Exception as e:
             print(f"❌ Failed to load markets for API pair: {e}")
 
+    async def _load_time_difference_for_pair(self, api_pair: Tuple[ccxt.Exchange, ccxt.Exchange]):
+        """API 쌍에 대해 load_markets 실행"""
+        binance_api, bybit_api = api_pair
+        try:
+            await asyncio.gather(
+                binance_api.load_time_difference(),
+                bybit_api.load_time_difference()
+            )
+            # print(f"✅ Markets loaded for API pair")
+        except Exception as e:
+            print(f"❌ Failed to load time difference for API pair: {e}")
+
     async def _background_initialize(self):
         """백그라운드에서 초기화 실행"""
         if self._initialized:
@@ -96,6 +111,7 @@ class ApiManager:
             for i in range(self.max_trading_num):
                 api_pair = self._create_api_pair()
                 await self._load_markets_for_pair(api_pair)
+                await self._load_time_difference_for_pair(api_pair)
 
                 # 락으로 보호하여 deque에 추가
                 async with self._api_deque_lock:
@@ -103,13 +119,13 @@ class ApiManager:
 
                 print(f"✅ API pair {i + 1}/{self.max_trading_num} initialized")
 
-            # Update Only Deque 생성
-            self.update_only_api = self._create_api_pair()
-            await self._load_markets_for_pair(self.update_only_api)
-
-            # shared_markets 초기화 추가
-            for i in range(2):
-                self.shared_markets[i] = self.update_only_api[i].markets.copy()
+            # # Update Only Deque 생성
+            # self.update_only_api = self._create_api_pair()
+            # await self._load_markets_for_pair(self.update_only_api)
+            #
+            # # shared_markets 초기화 추가
+            # for i in range(2):
+            #     self.shared_markets[i] = self.update_only_api[i].markets.copy()
 
             self._initialized = True
             self._running = True
@@ -121,9 +137,28 @@ class ApiManager:
         # 초기화 완료 대기
         await self.wait_for_initialization()
 
+        # Time Diff 보정
+        self._load_time_difference_task = asyncio.create_task(self._periodic_load_time_difference_for_pairs())
+
         # 주기적 load_markets 작업 시작
-        self._load_markets_task = asyncio.create_task(self._periodic_load_markets())
-        print(f"🔄 Started periodic load_markets task (interval: {self._load_markets_interval}s)")
+        # self._load_markets_task = asyncio.create_task(self._periodic_load_markets())
+        # print(f"🔄 Started periodic load_markets task (interval: {self._load_markets_interval}s)")
+
+    async def _periodic_load_time_difference_for_pairs(self):
+        while self._running:
+            try:
+                # 락으로 보호하여 가져오기
+                async with self._api_deque_lock:
+                    for _ in range(self.max_trading_num):
+                        if self.api_deque:
+                            # 가장 최신 것을 가져옴 (앞쪽에서)
+                            api_pair = self.api_deque.popleft()
+                            # Markets 최신 정보 업데이트
+                            await self._load_time_difference_for_pair(api_pair)
+                            self.api_deque.append(api_pair)
+            except Exception as e:
+                print(f"Periodically loading time difference failed: {e}")
+            await asyncio.sleep(900)
 
     async def _periodic_load_markets(self):
         """주기적으로 API 쌍 하나씩 load_markets 실행"""
@@ -273,6 +308,13 @@ class ApiManager:
             self._load_markets_task.cancel()
             try:
                 await self._load_markets_task
+            except asyncio.CancelledError:
+                pass
+
+        if self._load_time_difference_task:
+            self._load_time_difference_task.cancel()
+            try:
+                await self._load_time_difference_task
             except asyncio.CancelledError:
                 pass
 
