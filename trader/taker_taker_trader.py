@@ -565,6 +565,9 @@ class TakerTakerTrader(BaseTrader):
         long_profit = long_profit - (0.05 / 100) * ((long_result['average'] + self.enter_order_monitor_result['info']['long_price_average']) * self.enter_order_monitor_result['info']['long_qty'])
         short_profit = short_profit - (0.05 / 100) * ((short_result['average'] + self.enter_order_monitor_result['info']['short_price_average']) * self.enter_order_monitor_result['info']['short_qty'])
 
+        binance_result = long_result if long_exchange.id == 'binance' else short_result
+        bybit_result = long_result if long_exchange.id == 'bybit' else short_result
+
         trade_result = {
             'timenow': str(datetime.now()),
             'long_exchange': long_exchange.id,
@@ -587,7 +590,7 @@ class TakerTakerTrader(BaseTrader):
             'exit_signal_spread': self.exit_order_result['exit_spread_signed'],
             'long_exit_price': long_result['average'],
             'short_exit_price': short_result['average'],
-            'exit_spread': 100 * (short_result['average'] - long_result['average']) / min(long_result['average'], short_result['average']),
+            'exit_spread': 100 * (binance_result['average'] - bybit_result['average']) / min(binance_result['average'], bybit_result['average']),
             'long_profit': long_profit,
             'short_profit': short_profit,
             'total_profit': long_profit + short_profit,
